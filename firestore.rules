@@ -1,0 +1,125 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ============================================
+    // HELPER FUNCTIONS
+    // ============================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function getUserRole() {
+      return isAuthenticated() && 
+             exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role
+        : null;
+    }
+    
+    function isAdmin() {
+      return getUserRole() == 'admin';
+    }
+    
+    function isMerchant() {
+      return getUserRole() == 'merchant';
+    }
+    
+    function isUser() {
+      return getUserRole() == 'user';
+    }
+    
+    function getMerchantMallId() {
+      return isAuthenticated() && 
+             exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data.mallId
+        : null;
+    }
+    
+    function ownsShop(shopId) {
+      return isMerchant() && 
+             exists(/databases/$(database)/documents/shops/$(shopId)) &&
+             get(/databases/$(database)/documents/shops/$(shopId)).data.ownerId == request.auth.uid;
+    }
+    
+    function ownsProduct(productId) {
+      return isMerchant() && 
+             exists(/databases/$(database)/documents/products/$(productId)) &&
+             get(/databases/$(database)/documents/products/$(productId)).data.ownerId == request.auth.uid;
+    }
+    
+    function ownsOffer(offerId) {
+      return isMerchant() && 
+             exists(/databases/$(database)/documents/offers/$(offerId)) &&
+             get(/databases/$(database)/documents/offers/$(offerId)).data.ownerId == request.auth.uid;
+    }
+    
+    function shopBelongsToMerchantMall(shopData) {
+      return shopData.mallId == getMerchantMallId();
+    }
+    
+    // ============================================
+    // COLLECTION RULES
+    // ============================================
+    
+    // USERS - Allow admin to create merchant accounts
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();  // Admin creates merchant accounts
+      allow update: if isAuthenticated() && (isAdmin() || request.auth.uid == userId);
+      allow delete: if isAdmin();
+    }
+    
+    // MALLS - Admin creates, both admin and authenticated users can update (for merchant count)
+    match /malls/{mallId} {
+      allow read: if isAuthenticated();
+      allow create: if isAdmin();  // Only admin can create malls
+      allow update: if isAuthenticated();  // Allow merchant count updates during merchant creation
+      allow delete: if isAdmin();
+    }
+    
+    // SHOPS - Merchant only (Admin can read)
+    match /shops/{shopId} {
+      allow read: if isAuthenticated();
+      allow create: if isMerchant() && shopBelongsToMerchantMall(request.resource.data);
+      allow update: if ownsShop(shopId);
+      allow delete: if isAdmin() || ownsShop(shopId);
+    }
+    
+    // PRODUCTS - Merchant only
+    match /products/{productId} {
+      allow read: if isAuthenticated();
+      allow create: if isMerchant();
+      allow update: if ownsProduct(productId);
+      allow delete: if isAdmin() || ownsProduct(productId);
+    }
+    
+    // OFFERS - Merchant only
+    match /offers/{offerId} {
+      allow read: if isAuthenticated();
+      allow create: if isMerchant();
+      allow update: if ownsOffer(offerId);
+      allow delete: if isAdmin() || ownsOffer(offerId);
+    }
+    
+    // CATEGORIES - Merchant manages, all read
+    match /categories/{categoryId} {
+      allow read: if isAuthenticated();
+      allow write: if isMerchant();
+    }
+    
+    // FLOORS - Merchant manages, all read
+    match /floors/{floorId} {
+      allow read: if isAuthenticated();
+      allow write: if isMerchant();
+    }
+    
+    // LOGS - Admin reads, all authenticated users create
+    match /logs/{logId} {
+      allow read: if isAdmin();
+      allow create: if isAuthenticated();
+      allow update, delete: if false;
+    }
+  }
+}
