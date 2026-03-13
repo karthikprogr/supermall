@@ -113,7 +113,7 @@ const HelpSupport = () => {
   ];
 
   return (
-    <div className="page-container">
+    <div className="page-container user-marketplace-page">
       <div className="page-header">
         <h1>Help & Support</h1>
         <p className="subtitle">Find answers and get assistance</p>

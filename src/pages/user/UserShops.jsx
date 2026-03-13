@@ -76,7 +76,7 @@ const UserShops = () => {
   }
 
   return (
-    <div className="page-container">
+    <div className="page-container user-marketplace-page">
       <div className="page-header">
         <h1>{selectedMall?.name || 'Browse Shops'}</h1>
         <p className="subtitle">
@@ -92,7 +92,7 @@ const UserShops = () => {
         </p>
       </div>
       <button 
-        className="btn btn-sm btn-secondary" 
+        className="btn btn-sm btn-secondary marketplace-back-btn" 
         onClick={() => navigate('/user/malls')}
         style={{marginBottom: '1.5rem', alignSelf: 'flex-start'}}
       >

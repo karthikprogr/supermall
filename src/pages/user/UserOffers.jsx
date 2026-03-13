@@ -6,6 +6,12 @@ import { useUserContext } from '../../contexts/UserContext';
 
 const UserOffers = () => {
   const [offers, setOffers] = useState([]);
+  const [filteredOffers, setFilteredOffers] = useState([]);
+  const [offerFilters, setOfferFilters] = useState({
+    searchTerm: '',
+    minDiscount: '',
+    sortBy: 'bestDiscount'
+  });
   const [loading, setLoading] = useState(true);
   const { selectedMall } = useUserContext();
   const navigate = useNavigate();
@@ -17,6 +23,10 @@ const UserOffers = () => {
     }
     fetchOffers();
   }, [selectedMall, navigate]);
+
+  useEffect(() => {
+    applyOfferFilters();
+  }, [offers, offerFilters]);
 
   const fetchOffers = async () => {
     try {
@@ -63,6 +73,7 @@ const UserOffers = () => {
         });
       
       setOffers(activeOffers);
+      setFilteredOffers(activeOffers);
       setLoading(false);
     } catch (error) {
       console.error('Error fetching offers:', error);
@@ -70,12 +81,40 @@ const UserOffers = () => {
     }
   };
 
+  const applyOfferFilters = () => {
+    let filtered = [...offers];
+    const minDiscountValue = Number(offerFilters.minDiscount);
+
+    if (offerFilters.searchTerm) {
+      const searchText = offerFilters.searchTerm.toLowerCase();
+      filtered = filtered.filter((offer) =>
+        (offer.product?.name || '').toLowerCase().includes(searchText) ||
+        (offer.shop?.shopName || '').toLowerCase().includes(searchText) ||
+        (offer.description || '').toLowerCase().includes(searchText)
+      );
+    }
+
+    if (offerFilters.minDiscount !== '' && !Number.isNaN(minDiscountValue)) {
+      filtered = filtered.filter((offer) => Number(offer.discount) >= minDiscountValue);
+    }
+
+    if (offerFilters.sortBy === 'bestDiscount') {
+      filtered.sort((a, b) => Number(b.discount) - Number(a.discount));
+    } else if (offerFilters.sortBy === 'expiringSoon') {
+      filtered.sort((a, b) => new Date(a.validTill) - new Date(b.validTill));
+    } else if (offerFilters.sortBy === 'latest') {
+      filtered.sort((a, b) => new Date(b.validTill) - new Date(a.validTill));
+    }
+
+    setFilteredOffers(filtered);
+  };
+
   if (loading) {
     return <div className="loading">Loading offers...</div>;
   }
 
   return (
-    <div className="page-container">
+    <div className="page-container user-marketplace-page">
       <div className="page-header">
         <h1>{selectedMall?.name || 'Active Offers'}</h1>
         <p className="subtitle">
@@ -91,19 +130,72 @@ const UserOffers = () => {
         </p>
       </div>
       <button 
-        className="btn btn-sm btn-secondary" style={{marginBottom: '1.5rem', alignSelf: 'flex-start'}}
+        className="btn btn-sm btn-secondary marketplace-back-btn" style={{marginBottom: '1.5rem', alignSelf: 'flex-start'}}
         onClick={() => navigate('/user/malls')}
       >
         Change Mall
       </button>
 
-      {offers.length === 0 ? (
+      <div className="filters-container">
+        <div className="filter-group">
+          <label>Search Offers</label>
+          <input
+            type="text"
+            placeholder="Search by product, shop, or description"
+            value={offerFilters.searchTerm}
+            onChange={(e) => setOfferFilters({ ...offerFilters, searchTerm: e.target.value })}
+            className="filter-input"
+          />
+        </div>
+        <div className="filter-group">
+          <label>Minimum Discount (%)</label>
+          <input
+            type="number"
+            min="0"
+            max="100"
+            placeholder="e.g. 20"
+            value={offerFilters.minDiscount}
+            onChange={(e) => setOfferFilters({ ...offerFilters, minDiscount: e.target.value })}
+            className="input-field"
+          />
+        </div>
+        <div className="filter-group">
+          <label>Sort Offers</label>
+          <select
+            value={offerFilters.sortBy}
+            onChange={(e) => setOfferFilters({ ...offerFilters, sortBy: e.target.value })}
+            className="select-field"
+          >
+            <option value="bestDiscount">Best Discount</option>
+            <option value="expiringSoon">Expiring Soon</option>
+            <option value="latest">Latest Validity</option>
+          </select>
+        </div>
+        <button
+          className="btn btn-secondary"
+          onClick={() =>
+            setOfferFilters({
+              searchTerm: '',
+              minDiscount: '',
+              sortBy: 'bestDiscount'
+            })
+          }
+        >
+          Clear Filters
+        </button>
+      </div>
+
+      <div className="results-info">
+        <p>Showing {filteredOffers.length} of {offers.length} active offers</p>
+      </div>
+
+      {filteredOffers.length === 0 ? (
         <div className="empty-state">
-          <p>No active offers at the moment. Check back later!</p>
+          <p>No offers match your filters right now.</p>
         </div>
       ) : (
         <div className="offers-grid">
-          {offers.map(offer => (
+          {filteredOffers.map(offer => (
             <div key={offer.id} className="offer-card">
               <div className="offer-badge-large">{offer.discount}% OFF</div>
               

@@ -9,8 +9,12 @@ const UserDashboard = () => {
   const [stats, setStats] = useState({
     totalShops: 0,
     totalProducts: 0,
-    activeOffers: 0
+    activeOffers: 0,
+    avgProductPrice: 0
   });
+  const [topOffers, setTopOffers] = useState([]);
+  const [topCategories, setTopCategories] = useState([]);
+  const [recentProducts, setRecentProducts] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState({ shops: [], products: [] });
   const [showSearchResults, setShowSearchResults] = useState(false);
@@ -76,35 +80,68 @@ const UserDashboard = () => {
         where('mallId', '==', selectedMall.id)
       );
       const shopsSnapshot = await getDocs(shopsQuery);
+      const shopIds = shopsSnapshot.docs.map((doc) => doc.id);
 
-      // Fetch all products from shops in this mall
-      let totalProducts = 0;
-      let totalOffers = 0;
+      // Fetch all products once and filter by selected mall shops
+      const productsSnapshot = await getDocs(collection(db, 'products'));
+      const productList = productsSnapshot.docs
+        .map((doc) => ({ id: doc.id, ...doc.data() }))
+        .filter((product) => shopIds.includes(product.shopId));
 
-      for (const shopDoc of shopsSnapshot.docs) {
-        const productsQuery = query(
-          collection(db, 'products'),
-          where('shopId', '==', shopDoc.id)
-        );
-        const productsSnapshot = await getDocs(productsQuery);
-        totalProducts += productsSnapshot.size;
+      // Fetch all offers once and map by productId
+      const offersSnapshot = await getDocs(collection(db, 'offers'));
+      const offersList = offersSnapshot.docs
+        .map((doc) => ({ id: doc.id, ...doc.data() }))
+        .filter((offer) => productList.some((product) => product.id === offer.productId));
 
-        // Count offers for these products
-        for (const productDoc of productsSnapshot.docs) {
-          const offersQuery = query(
-            collection(db, 'offers'),
-            where('productId', '==', productDoc.id)
-          );
-          const offersSnapshot = await getDocs(offersQuery);
-          totalOffers += offersSnapshot.size;
-        }
-      }
+      const offersByProduct = new Map();
+      offersList.forEach((offer) => {
+        offersByProduct.set(offer.productId, offer);
+      });
+
+      const productsWithOffers = productList.map((product) => ({
+        ...product,
+        offer: offersByProduct.get(product.id) || null
+      }));
+
+      // Category insights
+      const categoryCounter = {};
+      productsWithOffers.forEach((product) => {
+        const categoryName = product.category || 'Others';
+        categoryCounter[categoryName] = (categoryCounter[categoryName] || 0) + 1;
+      });
+
+      const categoryInsights = Object.entries(categoryCounter)
+        .map(([name, count]) => ({ name, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 4);
+
+      // Top deals and recently added products
+      const bestDeals = productsWithOffers
+        .filter((product) => Boolean(product.offer))
+        .sort((a, b) => (b.offer?.discount || 0) - (a.offer?.discount || 0))
+        .slice(0, 3);
+
+      const recent = [...productsWithOffers]
+        .sort((a, b) => {
+          const aTime = typeof a.createdAt?.seconds === 'number' ? a.createdAt.seconds : 0;
+          const bTime = typeof b.createdAt?.seconds === 'number' ? b.createdAt.seconds : 0;
+          return bTime - aTime;
+        })
+        .slice(0, 4);
+
+      const totalPrice = productsWithOffers.reduce((sum, product) => sum + (Number(product.price) || 0), 0);
+      const averagePrice = productsWithOffers.length ? Math.round(totalPrice / productsWithOffers.length) : 0;
 
       setStats({
         totalShops: shopsSnapshot.size,
-        totalProducts,
-        activeOffers: totalOffers
+        totalProducts: productsWithOffers.length,
+        activeOffers: offersList.length,
+        avgProductPrice: averagePrice
       });
+      setTopCategories(categoryInsights);
+      setTopOffers(bestDeals);
+      setRecentProducts(recent);
 
       setLoading(false);
     } catch (error) {
@@ -122,7 +159,7 @@ const UserDashboard = () => {
   }
 
   return (
-    <div className="dashboard-page">
+    <div className="dashboard-page user-marketplace-page">
       <div className="mall-header">
         <h1>{selectedMall.name}</h1>
         {selectedMall.location && (
@@ -136,13 +173,19 @@ const UserDashboard = () => {
         )}
         <button 
           onClick={() => clearMallSelection()}
-          className="btn btn-secondary btn-sm"
+          className="btn btn-secondary btn-sm marketplace-back-btn"
         >
           Change Mall
         </button>
       </div>
 
       <p className="subtitle">Explore shops, products, and amazing deals</p>
+
+      <div className="user-highlight-strip">
+        <div className="highlight-chip">Smart search enabled</div>
+        <div className="highlight-chip">Top deals curated</div>
+        <div className="highlight-chip">Live mall insights</div>
+      </div>
 
       {/* Universal Search Bar */}
       <div className="filters-container">
@@ -210,6 +253,10 @@ const UserDashboard = () => {
           <h3>{stats.activeOffers}</h3>
           <p>Active Offers</p>
         </div>
+        <div className="stat-card">
+          <h3>₹{stats.avgProductPrice}</h3>
+          <p>Avg Product Price</p>
+        </div>
       </div>
 
       <div className="dashboard-section">
@@ -270,6 +317,94 @@ const UserDashboard = () => {
               <small>Compare price & features</small>
             </div>
           </Link>
+
+          <Link to="/user/saved" className="link-card">
+            <div className="link-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+              </svg>
+            </div>
+            <div>
+              <div className="link-title">Saved Items</div>
+              <small>Your shortlisted products</small>
+            </div>
+          </Link>
+        </div>
+      </div>
+
+      <div className="dashboard-section">
+        <h2>Top Deals for You</h2>
+        {topOffers.length === 0 ? (
+          <p className="empty-message">No active deals right now. Check back soon.</p>
+        ) : (
+          <div className="insights-grid">
+            {topOffers.map((product) => {
+              const discount = Number(product.offer?.discount || 0);
+              const basePrice = Number(product.price || 0);
+              const discountedPrice = Math.max(0, basePrice - (basePrice * discount) / 100);
+
+              return (
+                <div key={product.id} className="insight-card deal-card" onClick={() => navigate('/user/offers')}>
+                  <div className="deal-discount-badge">{discount}% OFF</div>
+                  <h3>{product.name}</h3>
+                  <p className="deal-pricing">
+                    <span className="price-old">₹{basePrice}</span>
+                    <span className="price-new">₹{discountedPrice.toFixed(0)}</span>
+                  </p>
+                  <p className="deal-meta">{product.category || 'Category unavailable'}</p>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      <div className="dashboard-split-layout">
+        <div className="dashboard-section compact">
+          <h2>Top Categories</h2>
+          {topCategories.length === 0 ? (
+            <p className="empty-message">No category insights yet.</p>
+          ) : (
+            <div className="category-bars">
+              {topCategories.map((item) => {
+                const maxCount = topCategories[0]?.count || 1;
+                const widthPercent = Math.max(15, Math.round((item.count / maxCount) * 100));
+
+                return (
+                  <div key={item.name} className="category-row">
+                    <div className="category-row-head">
+                      <span>{item.name}</span>
+                      <strong>{item.count}</strong>
+                    </div>
+                    <div className="category-track">
+                      <div className="category-fill" style={{ width: `${widthPercent}%` }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        <div className="dashboard-section compact">
+          <h2>Recently Added Products</h2>
+          {recentProducts.length === 0 ? (
+            <p className="empty-message">No recent products found.</p>
+          ) : (
+            <div className="recent-list">
+              {recentProducts.map((product) => (
+                <button
+                  type="button"
+                  key={product.id}
+                  className="recent-item"
+                  onClick={() => navigate('/user/products')}
+                >
+                  <span className="recent-name">{product.name}</span>
+                  <span className="recent-price">₹{Number(product.price || 0)}</span>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>

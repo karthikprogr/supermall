@@ -2,14 +2,25 @@ import { useState, useEffect } from 'react';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
 
-const Filters = ({ filters, onFilterChange }) => {
-  const { category, floor, searchTerm } = filters;
+const Filters = ({ filters, onFilterChange, mode = 'default' }) => {
+  const {
+    category,
+    floor,
+    searchTerm,
+    minPrice = '',
+    maxPrice = '',
+    sortBy = 'relevance',
+    hasOfferOnly = false
+  } = filters;
   const [categories, setCategories] = useState([]);
   const [floors, setFloors] = useState([]);
+  const isProductMode = mode === 'products';
 
   useEffect(() => {
-    fetchCategoriesAndFloors();
-  }, []);
+    if (mode !== 'offers') {
+      fetchCategoriesAndFloors();
+    }
+  }, [mode]);
 
   const fetchCategoriesAndFloors = async () => {
     try {
@@ -66,11 +77,80 @@ const Filters = ({ filters, onFilterChange }) => {
         </select>
       </div>
 
+      {isProductMode && (
+        <>
+          <div className="filter-group">
+            <label>Min Price</label>
+            <input
+              type="number"
+              min="0"
+              placeholder="e.g. 500"
+              value={minPrice}
+              onChange={(e) => onFilterChange({ ...filters, minPrice: e.target.value })}
+              className="input-field"
+            />
+          </div>
+
+          <div className="filter-group">
+            <label>Max Price</label>
+            <input
+              type="number"
+              min="0"
+              placeholder="e.g. 5000"
+              value={maxPrice}
+              onChange={(e) => onFilterChange({ ...filters, maxPrice: e.target.value })}
+              className="input-field"
+            />
+          </div>
+
+          <div className="filter-group">
+            <label>Sort By</label>
+            <select
+              value={sortBy}
+              onChange={(e) => onFilterChange({ ...filters, sortBy: e.target.value })}
+              className="select-field"
+            >
+              <option value="relevance">Relevance</option>
+              <option value="priceLowHigh">Price: Low to High</option>
+              <option value="priceHighLow">Price: High to Low</option>
+              <option value="offerHighLow">Best Discount</option>
+              <option value="newest">Newest First</option>
+            </select>
+          </div>
+
+          <div className="filter-group filter-checkbox-row">
+            <label className="filter-checkbox">
+              <input
+                type="checkbox"
+                checked={hasOfferOnly}
+                onChange={(e) => onFilterChange({ ...filters, hasOfferOnly: e.target.checked })}
+              />
+              Show products with active offers only
+            </label>
+          </div>
+        </>
+      )}
+
       <button 
-        onClick={() => onFilterChange({ category: '', floor: '', searchTerm: '' })}
+        onClick={() =>
+          onFilterChange({
+            ...filters,
+            category: '',
+            floor: '',
+            searchTerm: '',
+            ...(isProductMode
+              ? {
+                  minPrice: '',
+                  maxPrice: '',
+                  sortBy: 'relevance',
+                  hasOfferOnly: false
+                }
+              : {})
+          })
+        }
         className="btn btn-secondary"
       >
-        Reset Filters
+        Clear Filters
       </button>
     </div>
   );

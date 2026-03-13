@@ -20,7 +20,7 @@ const UserAccount = () => {
   };
 
   return (
-    <div className="page-container">
+    <div className="page-container user-marketplace-page">
       <div className="account-header">
         <div className="account-icon">
           <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

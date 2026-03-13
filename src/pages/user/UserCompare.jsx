@@ -99,7 +99,7 @@ const UserCompare = () => {
   }
 
   return (
-    <div className="page-container">
+    <div className="page-container user-marketplace-page">
       <div className="mall-header">
         <div className="mall-header-content">
           <h1>Compare Products</h1>
@@ -112,7 +112,7 @@ const UserCompare = () => {
           </p>
         </div>
         <button 
-          className="btn btn-sm btn-secondary"
+          className="btn btn-sm btn-secondary marketplace-back-btn"
           onClick={() => navigate('/user/malls')}
         >
           Change Mall

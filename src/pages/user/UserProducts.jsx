@@ -15,7 +15,11 @@ const UserProducts = () => {
   const [filters, setFilters] = useState({
     category: '',
     floor: '',
-    searchTerm: ''
+    searchTerm: '',
+    minPrice: '',
+    maxPrice: '',
+    sortBy: 'relevance',
+    hasOfferOnly: false
   });
   const [loading, setLoading] = useState(true);
   const { selectedMall } = useUserContext();
@@ -90,6 +94,16 @@ const UserProducts = () => {
 
   const applyFilters = () => {
     let filtered = [...products];
+    const minPriceValue = Number(filters.minPrice);
+    const maxPriceValue = Number(filters.maxPrice);
+
+    const toNumber = (value) => Number(value) || 0;
+    const getCreatedTime = (value) => {
+      if (!value) return 0;
+      if (typeof value?.seconds === 'number') return value.seconds * 1000;
+      const parsed = new Date(value).getTime();
+      return Number.isNaN(parsed) ? 0 : parsed;
+    };
 
     if (filters.category) {
       filtered = filtered.filter(product => product.category === filters.category);
@@ -102,11 +116,56 @@ const UserProducts = () => {
     if (filters.searchTerm) {
       filtered = filtered.filter(product =>
         product.name.toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
-        (product.features && product.features.toLowerCase().includes(filters.searchTerm.toLowerCase()))
+        (product.features && product.features.toLowerCase().includes(filters.searchTerm.toLowerCase())) ||
+        (product.shopName && product.shopName.toLowerCase().includes(filters.searchTerm.toLowerCase()))
       );
     }
 
+    if (filters.minPrice !== '' && !Number.isNaN(minPriceValue)) {
+      filtered = filtered.filter(product => toNumber(product.price) >= minPriceValue);
+    }
+
+    if (filters.maxPrice !== '' && !Number.isNaN(maxPriceValue)) {
+      filtered = filtered.filter(product => toNumber(product.price) <= maxPriceValue);
+    }
+
+    if (filters.hasOfferOnly) {
+      filtered = filtered.filter(product => Boolean(product.offer));
+    }
+
+    if (filters.sortBy === 'priceLowHigh') {
+      filtered.sort((a, b) => toNumber(a.price) - toNumber(b.price));
+    } else if (filters.sortBy === 'priceHighLow') {
+      filtered.sort((a, b) => toNumber(b.price) - toNumber(a.price));
+    } else if (filters.sortBy === 'offerHighLow') {
+      filtered.sort((a, b) => toNumber(b.offer?.discount) - toNumber(a.offer?.discount));
+    } else if (filters.sortBy === 'newest') {
+      filtered.sort((a, b) => getCreatedTime(b.createdAt) - getCreatedTime(a.createdAt));
+    }
+
     setFilteredProducts(filtered);
+  };
+
+  const hasActiveFilters = Boolean(
+    filters.category ||
+      filters.floor ||
+      filters.searchTerm ||
+      filters.minPrice ||
+      filters.maxPrice ||
+      filters.hasOfferOnly ||
+      filters.sortBy !== 'relevance'
+  );
+
+  const resetAllFilters = () => {
+    setFilters({
+      category: '',
+      floor: '',
+      searchTerm: '',
+      minPrice: '',
+      maxPrice: '',
+      sortBy: 'relevance',
+      hasOfferOnly: false
+    });
   };
 
   const handleCompare = (product) => {
@@ -134,7 +193,7 @@ const UserProducts = () => {
   }
 
   return (
-    <div className="page-container">
+    <div className="page-container user-marketplace-page">
       <div className="page-header">
         <h1>{selectedMall?.name || 'Browse Products'}</h1>
         <p className="subtitle">
@@ -151,14 +210,25 @@ const UserProducts = () => {
       </div>
       {selectedMall && (
         <button 
-          className="btn btn-sm btn-secondary" style={{marginBottom: '1.5rem', alignSelf: 'flex-start'}}
+          className="btn btn-sm btn-secondary marketplace-back-btn" style={{marginBottom: '1.5rem', alignSelf: 'flex-start'}}
           onClick={() => navigate('/user/malls')}
         >
           Change Mall
         </button>
       )}
       
-      <Filters filters={filters} onFilterChange={setFilters} />
+      <Filters filters={filters} onFilterChange={setFilters} mode="products" />
+
+      <div className="filter-summary-bar">
+        <span className="summary-pill">Total: {products.length}</span>
+        <span className="summary-pill">Showing: {filteredProducts.length}</span>
+        {filters.hasOfferOnly && <span className="summary-pill">Offer Only</span>}
+        {hasActiveFilters && (
+          <button onClick={resetAllFilters} className="btn btn-link summary-reset-btn">
+            Reset all filters
+          </button>
+        )}
+      </div>
 
       {compareList.length > 0 && (
         <div className="compare-bar">

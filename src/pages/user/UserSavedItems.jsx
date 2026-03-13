@@ -66,7 +66,7 @@ const UserSavedItems = () => {
   }
 
   return (
-    <div className="saved-items-container">
+    <div className="saved-items-container user-marketplace-page">
       <div className="saved-items-header">
         <h1>
           <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2" style={{verticalAlign: 'middle', marginRight: '0.5rem'}}>
