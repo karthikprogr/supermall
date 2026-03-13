@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { collection, getDocs, doc, getDoc, query, where } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { useUserContext } from '../../contexts/UserContext';
+import AsyncState from '../../components/AsyncState';
 
 const UserOffers = () => {
   const [offers, setOffers] = useState([]);
@@ -13,6 +14,7 @@ const UserOffers = () => {
     sortBy: 'bestDiscount'
   });
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const { selectedMall } = useUserContext();
   const navigate = useNavigate();
 
@@ -30,6 +32,8 @@ const UserOffers = () => {
 
   const fetchOffers = async () => {
     try {
+      setError('');
+      setLoading(true);
       // First, get all shops for the selected mall
       const shopsQuery = query(
         collection(db, 'shops'),
@@ -77,6 +81,7 @@ const UserOffers = () => {
       setLoading(false);
     } catch (error) {
       console.error('Error fetching offers:', error);
+      setError('Unable to load offers right now. Please retry.');
       setLoading(false);
     }
   };
@@ -189,7 +194,16 @@ const UserOffers = () => {
         <p>Showing {filteredOffers.length} of {offers.length} active offers</p>
       </div>
 
-      {filteredOffers.length === 0 ? (
+      {error && (
+        <AsyncState
+          title="Could not fetch offers"
+          message={error}
+          actionLabel="Retry loading offers"
+          onAction={fetchOffers}
+        />
+      )}
+
+      {!error && filteredOffers.length === 0 ? (
         <div className="empty-state">
           <p>No offers match your filters right now.</p>
         </div>

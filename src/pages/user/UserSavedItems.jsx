@@ -4,6 +4,7 @@ import { useUserContext } from "../../contexts/UserContext";
 import ProductCard from "../../components/ProductCard";
 import { db } from "../../firebase";
 import { doc, getDoc } from "firebase/firestore";
+import AsyncState from "../../components/AsyncState";
 
 const UserSavedItems = () => {
   const { currentUser } = useAuth();
@@ -12,41 +13,42 @@ const UserSavedItems = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    const fetchSavedItems = async () => {
-      if (!currentUser?.uid || savedItems.length === 0) {
-        setSavedProducts([]);
-        setLoading(false);
-        return;
-      }
+  const fetchSavedItems = async () => {
+    if (!currentUser?.uid || savedItems.length === 0) {
+      setSavedProducts([]);
+      setLoading(false);
+      return;
+    }
 
-      try {
-        setLoading(true);
-        // Fetch product details for all saved items
-        const products = [];
-        for (const productId of savedItems) {
-          try {
-            const productDoc = await getDoc(doc(db, "products", productId));
-            if (productDoc.exists()) {
-              products.push({
-                id: productDoc.id,
-                ...productDoc.data(),
-              });
-            }
-          } catch (err) {
-            console.error(`Error fetching product ${productId}:`, err);
+    try {
+      setError(null);
+      setLoading(true);
+      // Fetch product details for all saved items
+      const products = [];
+      for (const productId of savedItems) {
+        try {
+          const productDoc = await getDoc(doc(db, "products", productId));
+          if (productDoc.exists()) {
+            products.push({
+              id: productDoc.id,
+              ...productDoc.data(),
+            });
           }
+        } catch (err) {
+          console.error(`Error fetching product ${productId}:`, err);
         }
-
-        setSavedProducts(products);
-      } catch (err) {
-        console.error("Error fetching saved items:", err);
-        setError("Failed to load saved items");
-      } finally {
-        setLoading(false);
       }
-    };
 
+      setSavedProducts(products);
+    } catch (err) {
+      console.error("Error fetching saved items:", err);
+      setError("Failed to load saved items");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchSavedItems();
   }, [currentUser?.uid, savedItems]);
 
@@ -77,9 +79,16 @@ const UserSavedItems = () => {
         <p className="saved-count">You have {savedProducts.length} saved product{savedProducts.length !== 1 ? 's' : ''}</p>
       </div>
 
-      {error && <div className="error-message">{error}</div>}
+      {error && (
+        <AsyncState
+          title="Could not load saved items"
+          message={error}
+          actionLabel="Retry loading saved items"
+          onAction={fetchSavedItems}
+        />
+      )}
 
-      {savedProducts.length === 0 ? (
+      {!error && savedProducts.length === 0 ? (
         <div className="empty-state">
           <div className="empty-icon">
             <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

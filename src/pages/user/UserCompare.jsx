@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { useUserContext } from '../../contexts/UserContext';
+import AsyncState from '../../components/AsyncState';
 
 const UserCompare = () => {
   const [products, setProducts] = useState([]);
@@ -10,6 +11,7 @@ const UserCompare = () => {
   const [compareList, setCompareList] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const { selectedMall } = useUserContext();
   const navigate = useNavigate();
 
@@ -35,6 +37,8 @@ const UserCompare = () => {
 
   const fetchProducts = async () => {
     try {
+      setError('');
+      setLoading(true);
       const shopsQuery = query(
         collection(db, 'shops'),
         where('mallId', '==', selectedMall.id)
@@ -76,6 +80,7 @@ const UserCompare = () => {
       setLoading(false);
     } catch (error) {
       console.error('Error fetching products:', error);
+      setError('Unable to load products for comparison. Please retry.');
       setLoading(false);
     }
   };
@@ -133,6 +138,15 @@ const UserCompare = () => {
         </div>
       </div>
 
+      {error && (
+        <AsyncState
+          title="Could not load compare data"
+          message={error}
+          actionLabel="Retry loading products"
+          onAction={fetchProducts}
+        />
+      )}
+
       {compareList.length > 0 && (
         <div className="compare-bar">
           <div className="compare-bar-content">
@@ -185,7 +199,7 @@ const UserCompare = () => {
         <h2>Select Products to Compare</h2>
         <p className="info-text">Choose up to 4 products from different shops to compare</p>
         
-        {filteredProducts.length === 0 ? (
+        {!error && filteredProducts.length === 0 ? (
           <p className="empty-message">No products found</p>
         ) : (
           <div className="cards-grid">

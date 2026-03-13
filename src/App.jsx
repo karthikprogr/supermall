@@ -1,46 +1,44 @@
+import { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { AuthProvider } from './contexts/AuthContext';
 import { UserProvider } from './contexts/UserContext';
 import Navbar from './components/Navbar';
 import MobileBottomNav from './components/MobileBottomNav';
 import ProtectedRoute from './components/ProtectedRoute';
 
-// Pages
-import Home from './pages/Home';
-import Login from './pages/Login';
-import Register from './pages/Register';
+// Route-level code splitting
+const Home = lazy(() => import('./pages/Home'));
+const Login = lazy(() => import('./pages/Login'));
+const Register = lazy(() => import('./pages/Register'));
 
-// Admin Pages
-import AdminDashboard from './pages/admin/AdminDashboard';
-import AdminShops from './pages/admin/AdminShops';
-import AdminCreateMerchant from './pages/admin/AdminCreateMerchant';
-import AdminMerchants from './pages/admin/AdminMerchants';
-import AdminEditMerchant from './pages/admin/AdminEditMerchant';
-import AdminCreateMall from './pages/admin/AdminCreateMall';
-import AdminMalls from './pages/admin/AdminMalls';
-import AdminViewMall from './pages/admin/AdminViewMall';
-import AdminEditMall from './pages/admin/AdminEditMall';
-import AdminViewShop from './pages/admin/AdminViewShop';
+const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'));
+const AdminShops = lazy(() => import('./pages/admin/AdminShops'));
+const AdminCreateMerchant = lazy(() => import('./pages/admin/AdminCreateMerchant'));
+const AdminMerchants = lazy(() => import('./pages/admin/AdminMerchants'));
+const AdminEditMerchant = lazy(() => import('./pages/admin/AdminEditMerchant'));
+const AdminCreateMall = lazy(() => import('./pages/admin/AdminCreateMall'));
+const AdminMalls = lazy(() => import('./pages/admin/AdminMalls'));
+const AdminViewMall = lazy(() => import('./pages/admin/AdminViewMall'));
+const AdminEditMall = lazy(() => import('./pages/admin/AdminEditMall'));
+const AdminViewShop = lazy(() => import('./pages/admin/AdminViewShop'));
 
-// Merchant Pages
-import MerchantDashboard from './pages/merchant/MerchantDashboard';
-import MerchantShops from './pages/merchant/MerchantShops';
-import CreateShop from './pages/merchant/CreateShop';
-import MerchantProducts from './pages/merchant/MerchantProducts';
-import AddProduct from './pages/merchant/AddProduct';
-import EditProduct from './pages/merchant/EditProduct';
-import CreateOffer from './pages/merchant/CreateOffer';
+const MerchantDashboard = lazy(() => import('./pages/merchant/MerchantDashboard'));
+const MerchantShops = lazy(() => import('./pages/merchant/MerchantShops'));
+const CreateShop = lazy(() => import('./pages/merchant/CreateShop'));
+const MerchantProducts = lazy(() => import('./pages/merchant/MerchantProducts'));
+const AddProduct = lazy(() => import('./pages/merchant/AddProduct'));
+const EditProduct = lazy(() => import('./pages/merchant/EditProduct'));
+const CreateOffer = lazy(() => import('./pages/merchant/CreateOffer'));
 
-// User Pages
-import UserDashboard from './pages/user/UserDashboard';
-import MallSelection from './pages/user/MallSelection';
-import UserShops from './pages/user/UserShops';
-import UserProducts from './pages/user/UserProducts';
-import UserOffers from './pages/user/UserOffers';
-import UserAccount from './pages/user/UserAccount';
-import UserCompare from './pages/user/UserCompare';
-import UserSavedItems from './pages/user/UserSavedItems';
-import HelpSupport from './pages/user/HelpSupport';
+const UserDashboard = lazy(() => import('./pages/user/UserDashboard'));
+const MallSelection = lazy(() => import('./pages/user/MallSelection'));
+const UserShops = lazy(() => import('./pages/user/UserShops'));
+const UserProducts = lazy(() => import('./pages/user/UserProducts'));
+const UserOffers = lazy(() => import('./pages/user/UserOffers'));
+const UserAccount = lazy(() => import('./pages/user/UserAccount'));
+const UserCompare = lazy(() => import('./pages/user/UserCompare'));
+const UserSavedItems = lazy(() => import('./pages/user/UserSavedItems'));
+const HelpSupport = lazy(() => import('./pages/user/HelpSupport'));
 
 import './App.css';
 
@@ -52,6 +50,7 @@ function App() {
           <div className="app">
             <Navbar />
           <main className="main-content">
+            <Suspense fallback={<div className="loading">Loading page...</div>}>
             <Routes>
               {/* Public Routes */}
               <Route path="/" element={<Home />} />
@@ -299,6 +298,7 @@ function App() {
               {/* Fallback */}
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
+            </Suspense>
           </main>
           <MobileBottomNav />
         </div>

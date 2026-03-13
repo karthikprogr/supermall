@@ -6,6 +6,7 @@ import { useUserContext } from '../../contexts/UserContext';
 import ProductCard from '../../components/ProductCard';
 import CompareModal from '../../components/CompareModal';
 import Filters from '../../components/Filters';
+import AsyncState from '../../components/AsyncState';
 
 const UserProducts = () => {
   const [products, setProducts] = useState([]);
@@ -22,6 +23,7 @@ const UserProducts = () => {
     hasOfferOnly: false
   });
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const { selectedMall } = useUserContext();
   const navigate = useNavigate();
 
@@ -35,6 +37,8 @@ const UserProducts = () => {
 
   const fetchProducts = async () => {
     try {
+      setError('');
+      setLoading(true);
       // Get all shops (or filter by mall if selected)
       let shopsSnapshot;
       if (selectedMall) {
@@ -88,6 +92,7 @@ const UserProducts = () => {
       setLoading(false);
     } catch (error) {
       console.error('Error fetching products:', error);
+      setError('Unable to load products at the moment. Please retry.');
       setLoading(false);
     }
   };
@@ -219,6 +224,15 @@ const UserProducts = () => {
       
       <Filters filters={filters} onFilterChange={setFilters} mode="products" />
 
+      {error && (
+        <AsyncState
+          title="Could not fetch products"
+          message={error}
+          actionLabel="Retry loading products"
+          onAction={fetchProducts}
+        />
+      )}
+
       <div className="filter-summary-bar">
         <span className="summary-pill">Total: {products.length}</span>
         <span className="summary-pill">Showing: {filteredProducts.length}</span>
@@ -249,7 +263,7 @@ const UserProducts = () => {
       </div>
 
       <div className="cards-grid">
-        {filteredProducts.length === 0 ? (
+        {!error && filteredProducts.length === 0 ? (
           <p className="empty-message">No products found matching your filters</p>
         ) : (
           filteredProducts.map(product => (

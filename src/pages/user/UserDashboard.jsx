@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { useUserContext } from '../../contexts/UserContext';
+import AsyncState from '../../components/AsyncState';
 
 const UserDashboard = () => {
   const { selectedMall, clearMallSelection } = useUserContext();
@@ -19,6 +20,7 @@ const UserDashboard = () => {
   const [searchResults, setSearchResults] = useState({ shops: [], products: [] });
   const [showSearchResults, setShowSearchResults] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -74,6 +76,8 @@ const UserDashboard = () => {
 
   const fetchData = async () => {
     try {
+      setError('');
+      setLoading(true);
       // Fetch shops in selected mall
       const shopsQuery = query(
         collection(db, 'shops'),
@@ -146,6 +150,7 @@ const UserDashboard = () => {
       setLoading(false);
     } catch (error) {
       console.error('Error fetching data:', error);
+      setError('Unable to load dashboard insights. Please retry.');
       setLoading(false);
     }
   };
@@ -201,6 +206,15 @@ const UserDashboard = () => {
         </div>
       </div>
 
+      {error && (
+        <AsyncState
+          title="Could not load dashboard"
+          message={error}
+          actionLabel="Retry loading dashboard"
+          onAction={fetchData}
+        />
+      )}
+
       {/* Search Results */}
       {showSearchResults && (
         <div className="search-results-container">
@@ -240,7 +254,7 @@ const UserDashboard = () => {
         </div>
       )}
 
-      <div className="stats-grid">
+      {!error && <div className="stats-grid">
         <div className="stat-card">
           <h3>{stats.totalShops}</h3>
           <p>Shops</p>
@@ -257,7 +271,7 @@ const UserDashboard = () => {
           <h3>₹{stats.avgProductPrice}</h3>
           <p>Avg Product Price</p>
         </div>
-      </div>
+      </div>}
 
       <div className="dashboard-section">
         <h2>Explore & Discover</h2>

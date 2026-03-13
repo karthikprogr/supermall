@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { useUserContext } from '../../contexts/UserContext';
+import AsyncState from '../../components/AsyncState';
 
 const MallSelection = () => {
   const [malls, setMalls] = useState([]);
@@ -10,6 +11,7 @@ const MallSelection = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState('nameAsc');
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const { setSelectedMall } = useUserContext();
   const navigate = useNavigate();
 
@@ -42,6 +44,8 @@ const MallSelection = () => {
 
   const fetchMalls = async () => {
     try {
+      setError('');
+      setLoading(true);
       const mallsSnapshot = await getDocs(collection(db, 'malls'));
       const mallsData = mallsSnapshot.docs.map(doc => ({
         id: doc.id,
@@ -52,6 +56,7 @@ const MallSelection = () => {
       setLoading(false);
     } catch (error) {
       console.error('Error fetching malls:', error);
+      setError('Unable to load malls right now. Please retry.');
       setLoading(false);
     }
   };
@@ -100,6 +105,15 @@ const MallSelection = () => {
           </div>
         </div>
       </div>
+
+      {error && (
+        <AsyncState
+          title="Could not fetch malls"
+          message={error}
+          actionLabel="Retry loading malls"
+          onAction={fetchMalls}
+        />
+      )}
 
       {featuredMalls.length > 0 && (
         <div className="featured-malls-section">
@@ -174,7 +188,7 @@ const MallSelection = () => {
         </div>
       </div>
 
-      {filteredMalls.length === 0 ? (
+      {!error && filteredMalls.length === 0 ? (
         <div className="empty-state">
           <p>{searchTerm ? 'No malls found matching your search' : 'No malls available at the moment'}</p>
         </div>

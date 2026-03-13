@@ -5,6 +5,7 @@ import { db } from '../../firebase';
 import { useUserContext } from '../../contexts/UserContext';
 import ShopCard from '../../components/ShopCard';
 import Filters from '../../components/Filters';
+import AsyncState from '../../components/AsyncState';
 
 const UserShops = () => {
   const [shops, setShops] = useState([]);
@@ -15,6 +16,7 @@ const UserShops = () => {
     searchTerm: ''
   });
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const { selectedMall } = useUserContext();
   const navigate = useNavigate();
 
@@ -32,6 +34,8 @@ const UserShops = () => {
 
   const fetchShops = async () => {
     try {
+      setError('');
+      setLoading(true);
       const shopsQuery = query(
         collection(db, 'shops'),
         where('mallId', '==', selectedMall.id)
@@ -46,6 +50,7 @@ const UserShops = () => {
       setLoading(false);
     } catch (error) {
       console.error('Error fetching shops:', error);
+      setError('Unable to load shops for this mall. Please retry.');
       setLoading(false);
     }
   };
@@ -101,12 +106,21 @@ const UserShops = () => {
       
       <Filters filters={filters} onFilterChange={setFilters} />
 
+      {error && (
+        <AsyncState
+          title="Could not fetch shops"
+          message={error}
+          actionLabel="Retry loading shops"
+          onAction={fetchShops}
+        />
+      )}
+
       <div className="results-info">
         <p>Showing {filteredShops.length} of {shops.length} shops</p>
       </div>
 
       <div className="cards-grid">
-        {filteredShops.length === 0 ? (
+        {!error && filteredShops.length === 0 ? (
           <p className="empty-message">No shops found matching your filters</p>
         ) : (
           filteredShops.map(shop => (
