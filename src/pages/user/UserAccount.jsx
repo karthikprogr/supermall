@@ -73,7 +73,7 @@ const UserAccount = () => {
           <hr style={{margin: '3rem 0', borderColor: 'var(--glass-border)'}} />
           
           <button onClick={handleLogout} className="btn btn-danger btn-block" style={{padding: '1.25rem', justifyContent: 'center'}}>
-             Secure Logout Protocol
+             Logout
           </button>
         </div>
       </div>
