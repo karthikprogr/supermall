@@ -8,12 +8,7 @@ import { validateRequired, validatePrice, validateImageFile } from '../../utils/
 import { uploadImageToCloudinary } from '../../utils/cloudinary';
 
 const EditProduct = () => {
-  const [formData, setFormData] = useState({
-    name: '',
-    price: '',
-    features: '',
-    shopId: ''
-  });
+  const [formData, setFormData] = useState({ name: '', price: '', features: '', shopId: '' });
   const [imageFile, setImageFile] = useState(null);
   const [currentImageURL, setCurrentImageURL] = useState('');
   const [shops, setShops] = useState([]);
@@ -25,226 +20,108 @@ const EditProduct = () => {
   const navigate = useNavigate();
   const { productId } = useParams();
 
-  useEffect(() => {
-    fetchShopsAndProduct();
-  }, [currentUser, productId]);
+  useEffect(() => { if (currentUser) fetchShopsAndProduct(); }, [currentUser, productId]);
 
   const fetchShopsAndProduct = async () => {
     try {
-      // Fetch shops
-      const shopsQuery = query(
-        collection(db, 'shops'),
-        where('ownerId', '==', currentUser.uid)
-      );
-      const shopsSnapshot = await getDocs(shopsQuery);
-      const shopsData = shopsSnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-      setShops(shopsData);
+      const shopsQ = query(collection(db, 'shops'), where('ownerId', '==', currentUser.uid));
+      const shopsSnap = await getDocs(shopsQ);
+      setShops(shopsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
 
-      // Fetch product
       const productDoc = await getDoc(doc(db, 'products', productId));
       if (productDoc.exists()) {
-        const productData = productDoc.data();
-        setFormData({
-          name: productData.name,
-          price: productData.price,
-          features: productData.features || '',
-          shopId: productData.shopId
-        });
-        setCurrentImageURL(productData.imageURL || '');
-      } else {
-        setError('Product not found');
-      }
+        const data = productDoc.data();
+        setFormData({ name: data.name, price: data.price, features: data.features || '', shopId: data.shopId });
+        setCurrentImageURL(data.imageURL || '');
+      } else setError('Product not found');
       setPageLoading(false);
-    } catch (error) {
-      console.error('Error fetching data:', error);
-      setError('Failed to load product');
-      setPageLoading(false);
-    }
+    } catch (error) { setError('Failed to load product'); setPageLoading(false); }
   };
 
-  const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
-  };
+  const handleChange = (e) => { setFormData({ ...formData, [e.target.name]: e.target.value }); };
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
-    if (file) {
-      if (!validateImageFile(file)) {
-        setError('Invalid image file. Must be JPG, PNG, GIF, or WEBP and under 5MB');
-        return;
-      }
-      setImageFile(file);
-      setError('');
-    }
+    if (file && validateImageFile(file)) { setImageFile(file); setError(''); }
+    else if(file) setError('Invalid image format (JPG/PNG < 5MB).');
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-
-    // Validation
-    if (!validateRequired(formData.name)) {
-      setError('Product name is required');
-      return;
-    }
-
-    if (!validatePrice(formData.price)) {
-      setError('Valid price is required');
-      return;
-    }
-
-    if (!validateRequired(formData.shopId)) {
-      setError('Please select a shop');
-      return;
-    }
+    if (!validateRequired(formData.name)) return setError('Product name required');
+    if (!validatePrice(formData.price)) return setError('Invalid valuation');
 
     setLoading(true);
-
     try {
       let imageURL = currentImageURL;
+      if (imageFile) imageURL = await uploadImageToCloudinary(imageFile);
 
-      // Upload image if provided
-      if (imageFile) {
-        imageURL = await uploadImageToCloudinary(imageFile);
-      }
-
-      const productData = {
-        ...formData,
-        price: parseFloat(formData.price),
-        imageURL,
-        updatedAt: new Date().toISOString()
-      };
-
-      await updateDoc(doc(db, 'products', productId), productData);
-      
+      await updateDoc(doc(db, 'products', productId), { ...formData, price: parseFloat(formData.price), imageURL, updatedAt: new Date().toISOString() });
       await logProduct.edit(currentUser.uid, formData.name, productId, formData.shopId);
-      
       navigate('/merchant/products');
-    } catch (error) {
-      console.error('Error updating product:', error);
-      setError('Failed to update product');
-    }
-
+    } catch (error) { setError('Failed to sync product changes.'); }
     setLoading(false);
   };
 
-  if (pageLoading) {
-    return <div className="loading">Loading product...</div>;
-  }
-
-  if (shops.length === 0) {
-    return (
-      <div className="page-container">
-        <div className="empty-state">
-          <h2>No Shops Found</h2>
-          <p>You need to create a shop before adding products.</p>
-          <button onClick={() => navigate('/merchant/shops/create')} className="btn btn-primary">
-            Create Shop
-          </button>
-        </div>
-      </div>
-    );
-  }
+  if (pageLoading) return <div className="loading">Retrieving Asset Metadata...</div>;
 
   return (
-    <div className="page-container">
-      <h1>Edit Product</h1>
-      
-      {error && <div className="error-message">{error}</div>}
-      
-      <form onSubmit={handleSubmit} className="form-container">
-        <div className="form-group">
-          <label>Product Name *</label>
-          <input
-            type="text"
-            name="name"
-            value={formData.name}
-            onChange={handleChange}
-            placeholder="Enter product name"
-            className="input-field"
-            required
-          />
-        </div>
+    <div className="admin-page container section-padding">
+      <div className="page-header text-center">
+        <h1 className="primary-gradient-text">Sync Retail Asset</h1>
+        <p className="subtitle">Modify the technical profile of a registered product in your inventory</p>
+      </div>
 
-        <div className="form-group">
-          <label>Price (₹) *</label>
-          <input
-            type="number"
-            name="price"
-            value={formData.price}
-            onChange={handleChange}
-            placeholder="Enter price"
-            className="input-field"
-            step="0.01"
-            min="0"
-            required
-          />
-        </div>
+      <div className="form-card-wrapper">
+        <div className="form-glass-card glass-card">
+          <form onSubmit={handleSubmit} className="premium-form">
+            {error && <div className="error-message">{error}</div>}
+            
+            <div className="form-grid">
+              <div className="form-group full-width">
+                <label>Asset Designation *</label>
+                <input type="text" name="name" value={formData.name} onChange={handleChange} required />
+              </div>
 
-        <div className="form-group">
-          <label>Shop *</label>
-          <select
-            name="shopId"
-            value={formData.shopId}
-            onChange={handleChange}
-            className="select-field"
-            required
-          >
-            <option value="">Select Shop</option>
-            {shops.map(shop => (
-              <option key={shop.id} value={shop.id}>{shop.shopName}</option>
-            ))}
-          </select>
-        </div>
+              <div className="form-group">
+                <label>Price Point (₹) *</label>
+                <input type="number" name="price" value={formData.price} onChange={handleChange} step="0.01" min="0" required />
+              </div>
 
-        <div className="form-group">
-          <label>Features</label>
-          <textarea
-            name="features"
-            value={formData.features}
-            onChange={handleChange}
-            placeholder="Enter product features (e.g., Color: Red, Size: Large)"
-            className="textarea-field"
-            rows="3"
-          />
-        </div>
+              <div className="form-group">
+                <label>Operational Storefront *</label>
+                <select name="shopId" value={formData.shopId} onChange={handleChange} required>
+                  {shops.map(shop => <option key={shop.id} value={shop.id}>{shop.shopName}</option>)}
+                </select>
+              </div>
 
-        <div className="form-group">
-          <label>Product Image</label>
-          {currentImageURL && (
-            <div className="current-image">
-              <img src={currentImageURL} alt={formData.name} />
-              <p>Current image</p>
+              <div className="form-group full-width">
+                <label>Technical Specifications</label>
+                <textarea name="features" value={formData.features} onChange={handleChange} rows="3" />
+              </div>
+
+              <div className="form-group full-width">
+                <label>Current Visual Identity</label>
+                {currentImageURL ? (
+                  <div style={{width: '200px', height: '120px', borderRadius: '12px', overflow: 'hidden', border: '1px solid var(--glass-border)', marginBottom: '1.5rem'}}>
+                    <img src={currentImageURL} alt="Preview" style={{width: '100%', height: '100%', objectFit: 'cover'}} />
+                  </div>
+                ) : <p style={{color: 'var(--text-dim)', fontSize: '0.9rem', marginBottom: '1.5rem'}}>No image currently associated with this asset.</p>}
+                
+                <label>Overwrite Identity Asset</label>
+                <input type="file" accept="image/*" onChange={handleImageChange} className="file-input" />
+                <small className="input-hint">Leave blank to retain current visual metadata.</small>
+              </div>
             </div>
-          )}
-          <input
-            type="file"
-            accept="image/*"
-            onChange={handleImageChange}
-            className="file-input"
-          />
-          <small>Max 5MB. Formats: JPG, PNG, GIF, WEBP (Leave empty to keep current image)</small>
-        </div>
 
-        <div className="form-actions">
-          <button type="submit" disabled={loading} className="btn btn-primary">
-            {loading ? 'Updating Product...' : 'Update Product'}
-          </button>
-          <button 
-            type="button" 
-            onClick={() => navigate('/merchant/products')} 
-            className="btn btn-secondary"
-          >
-            Cancel
-          </button>
+            <div className="form-footer-actions">
+              <button type="button" onClick={() => navigate('/merchant/products')} className="btn btn-secondary">Cancel</button>
+              <button type="submit" disabled={loading} className="btn btn-primary btn-large">{loading ? 'Syncing...' : 'Save Asset Changes'}</button>
+            </div>
+          </form>
         </div>
-      </form>
+      </div>
     </div>
   );
 };

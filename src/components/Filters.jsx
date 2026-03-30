@@ -37,99 +37,65 @@ const Filters = ({ filters, onFilterChange, mode = 'default' }) => {
   };
 
   return (
-    <div className="filters-container">
-      <div className="filter-group">
-        <label>Search</label>
-        <input
-          type="text"
-          placeholder="Search shops or products..."
-          value={searchTerm}
-          onChange={(e) => onFilterChange({ ...filters, searchTerm: e.target.value })}
-          className="input-field"
-        />
+    <div className="glass-card filters-container" style={{padding: '1.5rem', marginBottom: '2rem', display: 'flex', flexWrap: 'wrap', gap: '1.5rem', alignItems: 'center'}}>
+      <div className="filter-group" style={{flex: '1', minWidth: '200px'}}>
+        <label style={{display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '0.75rem'}}>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+          Search
+        </label>
+        <div style={{position: 'relative'}}>
+          <input
+            type="text"
+            placeholder="Name or brand..."
+            value={searchTerm}
+            onChange={(e) => onFilterChange({ ...filters, searchTerm: e.target.value })}
+            className="filter-input"
+            style={{width: '100%', padding: '0.8rem 1rem', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--glass-border)', borderRadius: '8px', color: '#fff'}}
+          />
+        </div>
       </div>
 
-      <div className="filter-group">
-        <label>Category</label>
+      <div className="filter-group" style={{minWidth: '160px'}}>
+        <label style={{display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '0.75rem'}}>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+            <path d="M4 21v-7m0-4V3m8 21v-9m0-5V3m8 21v-2m0-4V3M1 14h6m2-6h6m2 8h6"/>
+          </svg>
+          Category
+        </label>
         <select
           value={category}
           onChange={(e) => onFilterChange({ ...filters, category: e.target.value })}
           className="select-field"
+          style={{width: '100%', padding: '0.8rem 1rem', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--glass-border)', borderRadius: '8px', color: '#fff'}}
         >
-          <option value="">All Categories</option>
+          <option value="" style={{background: '#0f172a'}}>All Categories</option>
           {categories.map((cat, index) => (
-            <option key={index} value={cat}>{cat}</option>
+            <option key={index} value={cat} style={{background: '#0f172a'}}>{cat}</option>
           ))}
         </select>
       </div>
 
-      <div className="filter-group">
-        <label>Floor</label>
+      <div className="filter-group" style={{minWidth: '140px'}}>
+        <label style={{display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '0.75rem'}}>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+            <rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/>
+          </svg>
+          Floor
+        </label>
         <select
           value={floor}
           onChange={(e) => onFilterChange({ ...filters, floor: e.target.value })}
           className="select-field"
+          style={{width: '100%', padding: '0.8rem 1rem', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--glass-border)', borderRadius: '8px', color: '#fff'}}
         >
-          <option value="">All Floors</option>
+          <option value="" style={{background: '#0f172a'}}>All Floors</option>
           {floors.map((flr, index) => (
-            <option key={index} value={flr}>{flr}</option>
+            <option key={index} value={flr} style={{background: '#0f172a'}}>{flr}</option>
           ))}
         </select>
       </div>
-
-      {isProductMode && (
-        <>
-          <div className="filter-group">
-            <label>Min Price</label>
-            <input
-              type="number"
-              min="0"
-              placeholder="e.g. 500"
-              value={minPrice}
-              onChange={(e) => onFilterChange({ ...filters, minPrice: e.target.value })}
-              className="input-field"
-            />
-          </div>
-
-          <div className="filter-group">
-            <label>Max Price</label>
-            <input
-              type="number"
-              min="0"
-              placeholder="e.g. 5000"
-              value={maxPrice}
-              onChange={(e) => onFilterChange({ ...filters, maxPrice: e.target.value })}
-              className="input-field"
-            />
-          </div>
-
-          <div className="filter-group">
-            <label>Sort By</label>
-            <select
-              value={sortBy}
-              onChange={(e) => onFilterChange({ ...filters, sortBy: e.target.value })}
-              className="select-field"
-            >
-              <option value="relevance">Relevance</option>
-              <option value="priceLowHigh">Price: Low to High</option>
-              <option value="priceHighLow">Price: High to Low</option>
-              <option value="offerHighLow">Best Discount</option>
-              <option value="newest">Newest First</option>
-            </select>
-          </div>
-
-          <div className="filter-group filter-checkbox-row">
-            <label className="filter-checkbox">
-              <input
-                type="checkbox"
-                checked={hasOfferOnly}
-                onChange={(e) => onFilterChange({ ...filters, hasOfferOnly: e.target.checked })}
-              />
-              Show products with active offers only
-            </label>
-          </div>
-        </>
-      )}
 
       <button 
         onClick={() =>
@@ -148,11 +114,13 @@ const Filters = ({ filters, onFilterChange, mode = 'default' }) => {
               : {})
           })
         }
-        className="btn btn-secondary"
+        className="btn"
+        style={{padding: '0.8rem 1.25rem', background: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger)', border: '1px solid rgba(239, 68, 68, 0.2)', fontSize: '0.8rem', marginTop: '1.25rem'}}
       >
-        Clear Filters
+        Reset Filters
       </button>
     </div>
+
   );
 };
 

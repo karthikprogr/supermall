@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../../firebase';
-import { useAuth } from '../../contexts/AuthContext';
 
 const AdminDashboard = () => {
   const [stats, setStats] = useState({
@@ -12,7 +11,6 @@ const AdminDashboard = () => {
     totalMerchants: 0
   });
   const [loading, setLoading] = useState(true);
-  const { currentUser } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -21,29 +19,19 @@ const AdminDashboard = () => {
 
   const fetchData = async () => {
     try {
-      // Fetch malls
       const mallsSnapshot = await getDocs(collection(db, 'malls'));
-      const mallsCount = mallsSnapshot.size;
-
-      // Fetch shops
       const shopsSnapshot = await getDocs(collection(db, 'shops'));
-      const shopsCount = shopsSnapshot.size;
-
-      // Fetch products
       const productsSnapshot = await getDocs(collection(db, 'products'));
-      const productsCount = productsSnapshot.size;
-
-      // Fetch merchants
       const usersSnapshot = await getDocs(collection(db, 'users'));
+      
       const merchantsCount = usersSnapshot.docs.filter(doc => doc.data().role === 'merchant').length;
 
       setStats({
-        totalMalls: mallsCount,
-        totalShops: shopsCount,
-        totalProducts: productsCount,
+        totalMalls: mallsSnapshot.size,
+        totalShops: shopsSnapshot.size,
+        totalProducts: productsSnapshot.size,
         totalMerchants: merchantsCount
       });
-
       setLoading(false);
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -51,110 +39,122 @@ const AdminDashboard = () => {
     }
   };
 
-  if (loading) {
-    return <div className="loading">Loading...</div>;
-  }
+  if (loading) return <div className="loading">Loading dashboard...</div>;
 
   return (
-    <div className="dashboard-page">
-      <h1>Admin Dashboard</h1>
+    <div className="admin-page container section-padding">
+      <div className="page-header text-center">
+        <h1 className="primary-gradient-text">Admin Command Center</h1>
+        <p className="subtitle">Real-time overview of the Super Mall ecosystem</p>
+      </div>
       
       <div className="stats-grid">
-        <div className="stat-card">
-          <h3>{stats.totalMalls}</h3>
-          <p>Super Malls</p>
+        <div className="stat-card glass-card">
+          <div className="stat-number">{stats.totalMalls}</div>
+          <p className="stat-label">Super Malls</p>
         </div>
-        <div className="stat-card">
-          <h3>{stats.totalShops}</h3>
-          <p>Total Shops</p>
+        <div className="stat-card glass-card">
+          <div className="stat-number">{stats.totalShops}</div>
+          <p className="stat-label">Total Shops</p>
         </div>
-        <div className="stat-card">
-          <h3>{stats.totalProducts}</h3>
-          <p>Total Products</p>
+        <div className="stat-card glass-card">
+          <div className="stat-number">{stats.totalProducts}</div>
+          <p className="stat-label">Total Products</p>
         </div>
-        <div className="stat-card">
-          <h3>{stats.totalMerchants}</h3>
-          <p>Total Merchants</p>
+        <div className="stat-card glass-card">
+          <div className="stat-number">{stats.totalMerchants}</div>
+          <p className="stat-label">Merchants</p>
         </div>
       </div>
 
-      <div className="admin-actions">
-        <button 
-          onClick={() => navigate('/admin/create-mall')} 
-          className="btn btn-success"
-        >
-          + Create Super Mall
-        </button>
-        <button 
-          onClick={() => navigate('/admin/create-merchant')} 
-          className="btn btn-primary"
-        >
-          + Create Merchant
-        </button>
-        <button 
-          onClick={() => navigate('/admin/merchants')} 
-          className="btn btn-secondary"
-        >
-          View All Merchants
-        </button>
-      </div>
-
-      <div className="workflow-note">
-        <h3>
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{verticalAlign: 'middle', marginRight: '0.5rem'}}>
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-            <polyline points="14 2 14 8 20 8"/>
-            <line x1="16" y1="13" x2="8" y2="13"/>
-            <line x1="16" y1="17" x2="8" y2="17"/>
-            <polyline points="10 9 9 9 8 9"/>
-          </svg>
-          Categories and floors are managed by merchants, not admin.
-        
-          Setup Workflow
-        </h3>
-        <div className="workflow-steps">
-          <p><strong>Step 1:</strong> Create Super Mall structure</p>
-          <p><strong>Step 2:</strong> Create Merchant accounts and assign to malls</p>
-          <p><strong>Step 3:</strong> Merchants create shops, products, offers, categories & floors in their assigned malls</p>
-          <p><strong>Step 4:</strong> Users browse and compare products across shops</p>
+      <div className="admin-action-grid" style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '2rem', marginBottom: '5rem'}}>
+        <div className="action-row glass-card" style={{flexDirection: 'column', alignItems: 'flex-start', padding: '2.5rem'}}>
+          <div className="action-info" style={{marginBottom: '2rem'}}>
+            <h3 style={{fontSize: '1.25rem', color: 'var(--primary)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em'}}>Quick Launch</h3>
+            <p style={{marginTop: '0.5rem'}}>Expand the system by adding new infrastructure or retail personnel.</p>
+          </div>
+          <div className="action-buttons" style={{width: '100%', gap: '1rem'}}>
+            <button onClick={() => navigate('/admin/create-mall')} className="btn btn-primary" style={{flex: 1}}>
+              + New Mall
+            </button>
+            <button onClick={() => navigate('/admin/create-merchant')} className="btn btn-primary" style={{flex: 1}}>
+              + New Merchant
+            </button>
+          </div>
         </div>
-        <p className="note-text">ℹ️ Categories and floors are managed by merchants, not admin.</p>
+
+        <div className="action-row glass-card" style={{flexDirection: 'column', alignItems: 'flex-start', padding: '2.5rem'}}>
+          <div className="action-info" style={{marginBottom: '1.5rem'}}>
+            <h3 style={{fontSize: '1.25rem', color: 'var(--secondary)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em'}}>Operational Protocol</h3>
+            <p style={{marginTop: '0.5rem'}}>Follow this sequence for optimal ecosystem synchronization:</p>
+          </div>
+          <div className="workflow-steps-vertical" style={{display: 'flex', flexDirection: 'column', gap: '1rem', width: '100%'}}>
+            <div className="step-item" style={{display: 'flex', alignItems: 'center', gap: '1rem'}}>
+               <div style={{width: '24px', height: '24px', background: 'var(--primary)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '0.75rem', fontWeight: 900}}>1</div>
+               <span style={{fontSize: '0.9rem', color: 'var(--text-dim)'}}>Initialize Super Mall infrastructure</span>
+            </div>
+            <div className="step-item" style={{display: 'flex', alignItems: 'center', gap: '1rem'}}>
+               <div style={{width: '24px', height: '24px', background: 'var(--secondary)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '0.75rem', fontWeight: 900}}>2</div>
+               <span style={{fontSize: '0.9rem', color: 'var(--text-dim)'}}>Provision Merchant Partner credentials</span>
+            </div>
+            <div className="step-item" style={{display: 'flex', alignItems: 'center', gap: '1rem'}}>
+               <div style={{width: '24px', height: '24px', background: 'var(--accent)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '0.75rem', fontWeight: 900}}>3</div>
+               <span style={{fontSize: '0.9rem', color: 'var(--text-dim)'}}>Coordinate asset assignments (Stores/Malls)</span>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <div className="quick-links">
-        <h3>Quick Links</h3>
-        <div className="links-grid">
-          <button onClick={() => navigate('/admin/malls')} className="link-card">
-            <span className="link-icon">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <rect x="3" y="3" width="7" height="7"/>
-                <rect x="14" y="3" width="7" height="7"/>
-                <rect x="14" y="14" width="7" height="7"/>
-                <rect x="3" y="14" width="7" height="7"/>
+      <div className="management-links-section">
+        <h2 className="section-title text-left" style={{fontSize: '2rem', marginBottom: '2.5rem'}}>Management Modules</h2>
+        <div className="management-grid">
+          <div onClick={() => navigate('/admin/malls')} className="module-card glass-card clickable">
+            <div className="module-icon" style={{background: 'linear-gradient(135deg, var(--primary), var(--secondary))'}}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5">
+                <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
               </svg>
-            </span>
-            <span className="link-title">View All Malls</span>
-          </button>
-          <button onClick={() => navigate('/admin/merchants')} className="link-card">
-            <span className="link-icon">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-                <circle cx="9" cy="7" r="4"/>
-                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+            </div>
+            <div className="module-info">
+              <h4>Malls</h4>
+              <p>Configure architectural layout and metadata for all mega-malls.</p>
+            </div>
+          </div>
+
+          <div onClick={() => navigate('/admin/merchants')} className="module-card glass-card clickable">
+            <div className="module-icon" style={{background: 'linear-gradient(135deg, #f59e0b, #d97706)'}}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
               </svg>
-            </span>
-            <span className="link-title">View All Merchants</span>
-          </button>
-          <button onClick={() => navigate('/admin/shops')} className="link-card">
-            <span className="link-icon">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-                <polyline points="9 22 9 12 15 12 15 22"/>
+            </div>
+            <div className="module-info">
+              <h4>Merchants</h4>
+              <p>Verify credentials and oversee the full merchant directory.</p>
+            </div>
+          </div>
+
+          <div onClick={() => navigate('/admin/shops')} className="module-card glass-card clickable">
+            <div className="module-icon" style={{background: 'linear-gradient(135deg, #10b981, #059669)'}}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5">
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
               </svg>
-            </span>
-            <span className="link-title">View All Shops</span>
-          </button>
+            </div>
+            <div className="module-info">
+              <h4>Digital Shops</h4>
+              <p>Inventory health and store-front performance monitoring.</p>
+            </div>
+          </div>
+
+          <div onClick={() => navigate('/admin/categories')} className="module-card glass-card clickable">
+            <div className="module-icon" style={{background: 'linear-gradient(135deg, #3b82f6, #2563eb)'}}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5">
+                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+              </svg>
+            </div>
+            <div className="module-info">
+              <h4>Taxonomy</h4>
+              <p>Define logic for product categories and floor architectures.</p>
+            </div>
+          </div>
         </div>
       </div>
     </div>

@@ -14,15 +14,9 @@ const AdminMerchants = () => {
 
   const fetchMerchants = async () => {
     try {
-      const merchantsQuery = query(
-        collection(db, 'users'),
-        where('role', '==', 'merchant')
-      );
+      const merchantsQuery = query(collection(db, 'users'), where('role', '==', 'merchant'));
       const merchantsSnapshot = await getDocs(merchantsQuery);
-      const merchantsData = merchantsSnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
+      const merchantsData = merchantsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setMerchants(merchantsData);
       setLoading(false);
     } catch (error) {
@@ -32,102 +26,79 @@ const AdminMerchants = () => {
   };
 
   const handleDelete = async (merchantId, merchantName, mallId) => {
-    if (!window.confirm(`Are you sure you want to delete merchant "${merchantName}"? This action cannot be undone.`)) {
-      return;
-    }
-
+    if (!window.confirm(`Are you sure you want to delete merchant "${merchantName}"?`)) return;
     try {
-      // Decrement merchant count in mall if mall exists
       if (mallId) {
-        const mallDoc = await getDoc(doc(db, 'malls', mallId));
+        const mallRef = doc(db, 'malls', mallId);
+        const mallDoc = await getDoc(mallRef);
         if (mallDoc.exists()) {
-          const currentCount = mallDoc.data().currentMerchants || 0;
-          await updateDoc(doc(db, 'malls', mallId), {
-            currentMerchants: Math.max(0, currentCount - 1)
-          });
+          await updateDoc(mallRef, { currentMerchants: Math.max(0, (mallDoc.data().currentMerchants || 0) - 1) });
         }
       }
-
-      // Delete merchant user document
       await deleteDoc(doc(db, 'users', merchantId));
-      
-      // Update local state
       setMerchants(merchants.filter(m => m.id !== merchantId));
     } catch (error) {
       console.error('Error deleting merchant:', error);
-      alert('Failed to delete merchant');
     }
   };
 
-  if (loading) {
-    return <div className="loading">Loading merchants...</div>;
-  }
+  if (loading) return <div className="loading">Loading merchant directory...</div>;
 
   return (
-    <div className="page-container">
-      <div className="page-header">
-        <h1>Manage Merchants</h1>
-        <button 
-          onClick={() => navigate('/admin/create-merchant')} 
-          className="btn btn-success"
-        >
-          + Create New Merchant
+    <div className="admin-page container section-padding">
+      <div className="page-header" style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4rem'}}>
+        <div>
+          <h1 className="primary-gradient-text">Merchant Directory</h1>
+          <p className="subtitle" style={{marginTop: '0.5rem'}}>Manage verified retail partners and their access credentials</p>
+        </div>
+        <button onClick={() => navigate('/admin/create-merchant')} className="btn btn-primary btn-large">
+          + Onboard New Merchant
         </button>
       </div>
 
-      {merchants.length === 0 ? (
-        <div className="empty-state">
-          <p>No merchants found</p>
-          <button 
-            onClick={() => navigate('/admin/create-merchant')}
-            className="btn btn-primary"
-          >
-            Create First Merchant
-          </button>
-        </div>
-      ) : (
-        <div className="table-container">
-          <table className="data-table">
-            <thead>
+      <div className="admin-table-container">
+        <table className="admin-table">
+          <thead>
+            <tr>
+              <th>Retail Partner</th>
+              <th>Infrastructure</th>
+              <th>Credentials</th>
+              <th>Onboarded</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {merchants.length === 0 ? (
               <tr>
-                <th>Name</th>
-                <th>Email</th>
-                <th>Contact</th>
-                <th>Mall</th>
-                <th>Created At</th>
-                <th>Actions</th>
+                <td colSpan="5" style={{textAlign: 'center', padding: '4rem', color: 'var(--text-dim)'}}>No retail partners registered in the system.</td>
               </tr>
-            </thead>
-            <tbody>
-              {merchants.map(merchant => (
+            ) : (
+              merchants.map(merchant => (
                 <tr key={merchant.id}>
-                  <td>{merchant.name}</td>
-                  <td>{merchant.email}</td>
-                  <td>{merchant.contactNumber || 'N/A'}</td>
-                  <td>{merchant.mallName || 'N/A'}</td>
+                  <td>
+                    <div style={{fontWeight: 800, fontSize: '1.1rem'}}>{merchant.name}</div>
+                    <div style={{color: 'var(--text-muted)', fontSize: '0.85rem'}}>{merchant.contactNumber}</div>
+                  </td>
+                  <td>
+                    <div style={{color: 'var(--primary)', fontWeight: 700}}>{merchant.mallName || 'Unassigned'}</div>
+                    <div style={{fontSize: '0.75rem', opacity: 0.6}}>MALL_IDENTIFIER: {merchant.mallId?.slice(0,6) || 'N/A'}</div>
+                  </td>
+                  <td>
+                    <div style={{fontFamily: 'monospace', fontSize: '0.9rem'}}>{merchant.email}</div>
+                  </td>
                   <td>{new Date(merchant.createdAt).toLocaleDateString()}</td>
                   <td>
-                    <div style={{ display: 'flex', gap: '0.5rem' }}>
-                      <button
-                        onClick={() => navigate(`/admin/edit-merchant/${merchant.id}`)}
-                        className="btn btn-sm btn-primary"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => handleDelete(merchant.id, merchant.name, merchant.mallId)}
-                        className="btn btn-sm btn-danger"
-                      >
-                        Delete
-                      </button>
+                    <div style={{display: 'flex', gap: '1rem'}}>
+                      <button onClick={() => navigate(`/admin/edit-merchant/${merchant.id}`)} className="btn btn-sm btn-primary">Edit</button>
+                      <button onClick={() => handleDelete(merchant.id, merchant.name, merchant.mallId)} className="btn btn-sm btn-danger">Suspend</button>
                     </div>
                   </td>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 };

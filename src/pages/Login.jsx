@@ -68,16 +68,15 @@ const Login = () => {
     
     if (result.success) {
       if (result.needsRole) {
-        // Show role selection for new users
         setPendingGoogleUser(result.user);
         setShowRoleModal(true);
         setLoading(false);
-      } else {
-        // Existing user - navigation will be handled by useEffect
-        // when userRole is updated. Keep loading true until redirect
       }
     } else {
-      setError(result.error || 'Failed to sign in with Google');
+      // Don't show technical error if user just closed the popup
+      if (result.error && !result.error.includes('popup-closed-by-user')) {
+        setError(result.error.replace('Firebase: ', '').replace(/\(auth.*\)\./, ''));
+      }
       setLoading(false);
     }
   };
@@ -151,40 +150,41 @@ const Login = () => {
             <form onSubmit={handleSubmit} className="auth-form">
               <div className="form-group">
                 <label>Email Address</label>
-                <span className="input-icon">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <rect x="2" y="4" width="20" height="16" rx="2"/>
-                    <path d="M22,6L12,13L2,6"/>
-                  </svg>
-                </span>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@example.com"
-                  className="input-field"
-                  required
-                />
+                <div className="input-wrapper">
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="you@example.com"
+                    className="input-field"
+                    required
+                  />
+                  <span className="input-icon">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <rect x="2" y="4" width="20" height="16" rx="2"/>
+                      <path d="M22,6L12,13L2,6"/>
+                    </svg>
+                  </span>
+                </div>
               </div>
 
               <div className="form-group">
                 <label>Password</label>
-                <span className="input-icon">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-                    <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-                  </svg>
-                </span>
-                <div className="password-input-wrapper">
+                <div className="input-wrapper">
                   <input
                     type={showPassword ? "text" : "password"}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
                     className="input-field"
-                    style={{ paddingRight: '3rem' }}
                     required
                   />
+                  <span className="input-icon">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                      <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                    </svg>
+                  </span>
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
@@ -308,7 +308,7 @@ const Login = () => {
       <div className="demo-credentials">
         <h4>Demo Credentials:</h4>
         <p><strong>Admin:</strong> seelamkarthik2006@gmail.com / admin123</p>
-        <p><strong>Merchant:</strong> zudio2@gmail.com / zudio21</p>
+        <p><strong>Merchant:</strong> zudio3@gmail.com / zudio21</p>
         <p><strong>User:</strong> user@supermall.com / user123</p>
       </div>
     </div>

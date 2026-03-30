@@ -198,71 +198,47 @@ const UserProducts = () => {
   }
 
   return (
-    <div className="page-container user-marketplace-page">
-      <div className="page-header">
-        <h1>{selectedMall?.name || 'Browse Products'}</h1>
-        <p className="subtitle">
-          {selectedMall?.location ? (
-            <>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{verticalAlign: 'middle', marginRight: '0.25rem'}}>
-                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
-                <circle cx="12" cy="10" r="3"/>
-              </svg>
-              {selectedMall.location}
-            </>
-          ) : 'Explore and compare products'}
+    <div className="mall-selection-page">
+      <div className="page-header" style={{marginBottom: '3rem', position: 'relative'}}>
+        <button 
+          className="btn-ghost" 
+          onClick={() => navigate('/user/malls')}
+          style={{display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '1.5rem', background: 'transparent', border: 'none', cursor: 'pointer', padding: 0}}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>
+          </svg>
+          Back to Malls
+        </button>
+        <h1 className="primary-gradient-text" style={{fontSize: '3rem', marginBottom: '0.5rem'}}>Featured Collections</h1>
+        <p className="subtitle" style={{display: 'flex', alignItems: 'center', gap: '0.5rem'}}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <rect x="2" y="7" width="20" height="14" rx="2" ry="2"/>
+            <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
+          </svg>
+          Explore {products.length} Items {selectedMall ? `at ${selectedMall.mallName}` : ''}
         </p>
       </div>
-      {selectedMall && (
-        <button 
-          className="btn btn-sm btn-secondary marketplace-back-btn" style={{marginBottom: '1.5rem', alignSelf: 'flex-start'}}
-          onClick={() => navigate('/user/malls')}
-        >
-          Change Mall
-        </button>
-      )}
-      
+
       <Filters filters={filters} onFilterChange={setFilters} mode="products" />
 
-      {error && (
-        <AsyncState
-          title="Could not fetch products"
-          message={error}
-          actionLabel="Retry loading products"
-          onAction={fetchProducts}
-        />
-      )}
-
-      <div className="filter-summary-bar">
-        <span className="summary-pill">Total: {products.length}</span>
-        <span className="summary-pill">Showing: {filteredProducts.length}</span>
-        {filters.hasOfferOnly && <span className="summary-pill">Offer Only</span>}
-        {hasActiveFilters && (
-          <button onClick={resetAllFilters} className="btn btn-link summary-reset-btn">
-            Reset all filters
-          </button>
-        )}
-      </div>
-
       {compareList.length > 0 && (
-        <div className="compare-bar">
-          <span>{compareList.length} products selected for comparison</span>
-          <div className="compare-actions">
-            <button onClick={handleShowCompare} className="btn btn-primary">
-              Compare ({compareList.length})
+        <div className="glass-card" style={{position: 'fixed', bottom: '100px', left: '50%', transform: 'translateX(-50%)', padding: '1rem 2rem', zIndex: 1001, display: 'flex', alignItems: 'center', gap: '2rem', minWidth: '400px', boxShadow: '0 20px 50px rgba(0,0,0,0.5)', border: '1px solid var(--primary)'}}>
+          <span style={{fontWeight: 700, fontSize: '0.9rem'}}>{compareList.length} Items Selected</span>
+          <div style={{display: 'flex', gap: '1rem'}}>
+            <button onClick={handleShowCompare} className="btn btn-primary" style={{padding: '0.6rem 1.5rem', fontSize: '0.85rem'}}>
+              Compare Now
             </button>
-            <button onClick={() => setCompareList([])} className="btn btn-secondary">
+            <button onClick={() => setCompareList([])} className="btn-ghost" style={{color: 'var(--text-muted)', fontSize: '0.85rem', background: 'transparent', border: 'none', cursor: 'pointer'}}>
               Clear
             </button>
           </div>
         </div>
       )}
 
-      <div className="results-info">
-        <p>Showing {filteredProducts.length} of {products.length} products</p>
-      </div>
 
-      <div className="cards-grid">
+      <div className="malls-grid">
+
         {!error && filteredProducts.length === 0 ? (
           <p className="empty-message">No products found matching your filters</p>
         ) : (

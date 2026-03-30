@@ -11,213 +11,124 @@ const AdminViewShop = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    fetchShopDetails();
-  }, [id]);
+  useEffect(() => { fetchShopDetails(); }, [id]);
 
   const fetchShopDetails = async () => {
     try {
-      // Fetch shop details
       const shopDoc = await getDoc(doc(db, 'shops', id));
+      if (!shopDoc.exists()) throw new Error('Shop not found');
       
-      if (!shopDoc.exists()) {
-        setError('Shop not found');
-        setLoading(false);
-        return;
-      }
-
       const shopData = { id: shopDoc.id, ...shopDoc.data() };
       setShop(shopData);
 
-      // Fetch owner (merchant) details
       if (shopData.ownerId) {
         const ownerDoc = await getDoc(doc(db, 'users', shopData.ownerId));
-        if (ownerDoc.exists()) {
-          setOwner(ownerDoc.data());
-        }
+        if (ownerDoc.exists()) setOwner(ownerDoc.data());
       }
-
       setLoading(false);
-    } catch (error) {
-      console.error('Error fetching shop details:', error);
-      setError('Failed to load shop details');
+    } catch (err) {
+      setError(err.message);
       setLoading(false);
     }
   };
 
   const handleDelete = async () => {
-    if (!window.confirm(`Are you sure you want to delete "${shop.shopName}"? This action cannot be undone.`)) {
-      return;
-    }
-
+    if (!window.confirm(`Delete "${shop.shopName}"?`)) return;
     try {
       await deleteDoc(doc(db, 'shops', id));
-      alert('Shop deleted successfully!');
       navigate('/admin/shops');
-    } catch (error) {
-      console.error('Error deleting shop:', error);
-      alert('Failed to delete shop: ' + error.message);
-    }
+    } catch (err) { console.error(err); }
   };
 
-  if (loading) {
-    return <div className="loading">Loading shop details...</div>;
-  }
-
-  if (error) {
-    return (
-      <div className="page-container">
-        <div className="error-message">{error}</div>
-        <button onClick={() => navigate('/admin/shops')} className="btn btn-secondary">
-          Back to Shops
-        </button>
-      </div>
-    );
-  }
+  if (loading) return <div className="loading">Retaining shop telemetry...</div>;
+  if (error) return <div className="admin-page container section-padding text-center"><h2>{error}</h2><button onClick={() => navigate('/admin/shops')} className="btn btn-secondary">Return to List</button></div>;
 
   return (
-    <div className="page-container">
-      <div className="page-header">
-        <h1>Shop Details</h1>
+    <div className="admin-page container section-padding">
+      <div className="page-header" style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '4rem'}}>
         <div>
-          <button 
-            onClick={() => navigate(`/admin/edit-shop/${id}`)}
-            className="btn btn-primary"
-            style={{ marginRight: '10px' }}
-          >
-            Edit Shop
-          </button>
-          <button 
-            onClick={handleDelete}
-            className="btn btn-danger"
-            style={{ marginRight: '10px' }}
-          >
-            Delete Shop
-          </button>
-          <button 
-            onClick={() => navigate('/admin/shops')}
-            className="btn btn-secondary"
-          >
-            Back to Shops
-          </button>
+          <h1 className="primary-gradient-text" style={{fontSize: '3rem'}}>{shop.shopName}</h1>
+          <p className="subtitle">Operational metrics and storefront metadata</p>
+        </div>
+        <div style={{display: 'flex', gap: '1rem', marginBottom: '0.5rem'}}>
+          <button onClick={() => navigate(`/admin/edit-shop/${id}`)} className="btn btn-primary">Edit Logic</button>
+          <button onClick={handleDelete} className="btn btn-danger">Suspend Store</button>
         </div>
       </div>
 
-      <div className="details-container">
-        {/* Shop Information */}
-        <div className="details-section">
-          <h2>🏪 Shop Information</h2>
-          {shop.imageUrl && (
-            <div style={{ marginBottom: '1.5rem' }}>
-              <img 
-                src={shop.imageUrl} 
-                alt={shop.shopName}
-                style={{ 
-                  width: '100%', 
-                  maxWidth: '500px', 
-                  height: 'auto',
-                  borderRadius: '12px',
-                  boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
-                }}
-              />
+      <div className="admin-grid-layout" style={{display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '2.5rem', marginBottom: '4rem'}}>
+        <div className="glass-card section-padding">
+          <h3 className="stat-label" style={{marginBottom: '2rem'}}>Shop Information</h3>
+          <div className="info-display-grid" style={{display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '2rem'}}>
+            <div className="info-item">
+              <label style={{display: 'block', color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', marginBottom: '0.5rem'}}>Category</label>
+              <span style={{fontSize: '1.25rem', fontWeight: 700}}>{shop.category}</span>
             </div>
+            <div className="info-item">
+              <label style={{display: 'block', color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', marginBottom: '0.5rem'}}>Floor Level</label>
+              <span style={{fontSize: '1.25rem', fontWeight: 700}}>{shop.floor}</span>
+            </div>
+            <div className="info-item">
+              <label style={{display: 'block', color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', marginBottom: '0.5rem'}}>Contact Protocol</label>
+              <span style={{fontSize: '1.1rem'}}>{shop.contactNumber || 'NO_SIGNAL'}</span>
+            </div>
+            <div className="info-item">
+              <label style={{display: 'block', color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', marginBottom: '0.5rem'}}>Initialization</label>
+              <span style={{fontSize: '1.1rem'}}>{new Date(shop.createdAt).toLocaleDateString()}</span>
+            </div>
+            <div className="info-item" style={{gridColumn: 'span 2'}}>
+              <label style={{display: 'block', color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', marginBottom: '0.5rem'}}>Operational Context</label>
+              <p style={{color: 'var(--text-dim)', lineHeight: 1.6}}>{shop.description || 'No contextual profile provided for this retailer.'}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="glass-card section-padding">
+          <h3 className="stat-label" style={{marginBottom: '2rem'}}>Retailer Credentials</h3>
+          {owner ? (
+            <div className="owner-profile-card">
+              <div style={{display: 'flex', alignItems: 'center', gap: '1.5rem', marginBottom: '2rem'}}>
+                <div style={{width: '64px', height: '64px', background: 'var(--primary-glow)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem', fontWeight: 800, color: 'var(--primary)', border: '1px solid var(--primary)'}}>
+                  {owner.name[0]}
+                </div>
+                <div>
+                  <h4 style={{fontSize: '1.25rem', fontWeight: 800}}>{owner.name}</h4>
+                  <p style={{color: 'var(--primary)', fontSize: '0.8rem', fontWeight: 700}}>VERIFIED MERCHANT</p>
+                </div>
+              </div>
+              <div style={{display: 'flex', flexDirection: 'column', gap: '1.25rem'}}>
+                <div style={{fontSize: '0.95rem'}}><strong style={{color: 'var(--text-muted)'}}>Email:</strong> <span style={{fontFamily: 'monospace'}}>{owner.email}</span></div>
+                <div style={{fontSize: '0.95rem'}}><strong style={{color: 'var(--text-muted)'}}>Phone:</strong> {owner.contactNumber || 'N/A'}</div>
+                <button onClick={() => navigate(`/admin/edit-merchant/${shop.ownerId}`)} className="btn btn-sm" style={{marginTop: '1rem', width: '100%'}}>Manage Credentials</button>
+              </div>
+            </div>
+          ) : (
+             <div className="text-center" style={{padding: '2rem 0'}}>
+                <p style={{color: 'var(--text-muted)'}}>Merchant link severed or unknown.</p>
+             </div>
           )}
-          <div className="details-grid">
-            <div className="detail-item">
-              <label>Shop Name:</label>
-              <p>{shop.shopName}</p>
-            </div>
-            <div className="detail-item">
-              <label>Category:</label>
-              <p className="role-badge">{shop.category}</p>
-            </div>
-            <div className="detail-item">
-              <label>Floor:</label>
-              <p>{shop.floor}</p>
-            </div>
-            <div className="detail-item">
-              <label>Contact Number:</label>
-              <p>{shop.contactNumber || 'Not provided'}</p>
-            </div>
-            <div className="detail-item">
-              <label>Description:</label>
-              <p>{shop.description || 'No description provided'}</p>
-            </div>
-            <div className="detail-item">
-              <label>Created At:</label>
-              <p>{new Date(shop.createdAt).toLocaleString()}</p>
-            </div>
-          </div>
         </div>
+      </div>
 
-        {/* Owner Information */}
-        {owner && (
-          <div className="details-section">
-            <h2>👤 Shop Owner (Merchant)</h2>
-            <div className="details-grid">
-              <div className="detail-item">
-                <label>Owner Name:</label>
-                <p>{owner.name}</p>
-              </div>
-              <div className="detail-item">
-                <label>Email:</label>
-                <p className="credential-text">{owner.email}</p>
-              </div>
-              <div className="detail-item">
-                <label>Contact Number:</label>
-                <p>{owner.contactNumber || 'Not provided'}</p>
-              </div>
-              <div className="detail-item">
-                <label>Role:</label>
-                <p className="role-badge">{owner.role}</p>
-              </div>
-            </div>
+      <div className="stats-section">
+        <h3 className="section-title text-left" style={{fontSize: '1.5rem', marginBottom: '2.5rem'}}>Storefront Performance</h3>
+        <div className="stats-grid">
+          <div className="stat-card glass-card">
+            <div className="stat-number">0</div>
+            <p className="stat-label">Inventory Items</p>
           </div>
-        )}
-
-        {/* Shop Statistics */}
-        <div className="details-section">
-          <h2>📊 Shop Statistics</h2>
-          <div className="stats-grid">
-            <div className="stat-card">
-              <h3>0</h3>
-              <p>Total Products</p>
-            </div>
-            <div className="stat-card">
-              <h3>0</h3>
-              <p>Active Offers</p>
-            </div>
-            <div className="stat-card">
-              <h3>0</h3>
-              <p>Total Sales</p>
-            </div>
-            <div className="stat-card">
-              <h3>0</h3>
-              <p>Reviews</p>
-            </div>
+          <div className="stat-card glass-card">
+            <div className="stat-number">0</div>
+            <p className="stat-label">Active Gampaigns</p>
           </div>
-        </div>
-
-        {/* Action Buttons */}
-        <div className="action-buttons">
-          <button
-            onClick={() => navigate(`/admin/edit-shop/${id}`)}
-            className="btn btn-primary"
-          >
-            Edit Shop Details
-          </button>
-          <button
-            onClick={() => navigate(`/merchant/add-product?shopId=${id}`)}
-            className="btn btn-success"
-          >
-            Add Products to Shop
-          </button>
-          <button
-            onClick={handleDelete}
-            className="btn btn-danger"
-          >
-            Delete Shop
-          </button>
+          <div className="stat-card glass-card">
+            <div className="stat-number">0</div>
+            <p className="stat-label">System Revenue</p>
+          </div>
+          <div className="stat-card glass-card">
+            <div className="stat-number">0</div>
+            <p className="stat-label">User Feedback</p>
+          </div>
         </div>
       </div>
     </div>

@@ -81,30 +81,29 @@ const UserShops = () => {
   }
 
   return (
-    <div className="page-container user-marketplace-page">
-      <div className="page-header">
-        <h1>{selectedMall?.name || 'Browse Shops'}</h1>
-        <p className="subtitle">
-          {selectedMall?.location ? (
-            <>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{verticalAlign: 'middle', marginRight: '0.25rem'}}>
-                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
-                <circle cx="12" cy="10" r="3"/>
-              </svg>
-              {selectedMall.location}
-            </>
-          ) : 'Discover shops across the mall'}
+    <div className="mall-selection-page">
+      <div className="page-header" style={{marginBottom: '3rem', position: 'relative'}}>
+        <button 
+          className="btn-ghost" 
+          onClick={() => navigate('/user/malls')}
+          style={{display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '1.5rem', background: 'transparent', border: 'none', cursor: 'pointer', padding: 0}}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>
+          </svg>
+          Back to Malls
+        </button>
+        <h1 className="primary-gradient-text" style={{fontSize: '3rem', marginBottom: '0.5rem'}}>{selectedMall?.mallName || 'Browse Shops'}</h1>
+        <p className="subtitle" style={{display: 'flex', alignItems: 'center', gap: '0.5rem'}}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
+          </svg>
+          {selectedMall?.location} • {shops.length} Active Shops
         </p>
       </div>
-      <button 
-        className="btn btn-sm btn-secondary marketplace-back-btn" 
-        onClick={() => navigate('/user/malls')}
-        style={{marginBottom: '1.5rem', alignSelf: 'flex-start'}}
-      >
-        Change Mall
-      </button>
       
       <Filters filters={filters} onFilterChange={setFilters} />
+
 
       {error && (
         <AsyncState
@@ -119,7 +118,7 @@ const UserShops = () => {
         <p>Showing {filteredShops.length} of {shops.length} shops</p>
       </div>
 
-      <div className="cards-grid">
+      <div className="malls-grid">
         {!error && filteredShops.length === 0 ? (
           <p className="empty-message">No shops found matching your filters</p>
         ) : (
@@ -128,6 +127,7 @@ const UserShops = () => {
           ))
         )}
       </div>
+
     </div>
   );
 };

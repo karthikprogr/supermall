@@ -1,20 +1,21 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { collection, addDoc, getDocs, doc, getDoc } from 'firebase/firestore';
+import { useNavigate, useParams } from 'react-router-dom';
+import { doc, getDoc, updateDoc, collection, getDocs } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import { logShop } from '../../utils/logger';
 import { validateRequired, validateImageFile } from '../../utils/validation';
 import { uploadImageToCloudinary } from '../../utils/cloudinary';
 
-const CreateShop = () => {
+const EditShop = () => {
   const [formData, setFormData] = useState({ shopName: '', category: '', floor: '', description: '', contactNumber: '', customCategory: '', customFloor: '' });
   const [imageFile, setImageFile] = useState(null);
+  const [currentImageURL, setCurrentImageURL] = useState('');
   const [categories, setCategories] = useState([]);
   const [floors, setFloors] = useState([]);
-  const [merchantData, setMerchantData] = useState(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [pageLoading, setPageLoading] = useState(true);
   const [showCustomCategory, setShowCustomCategory] = useState(false);
   const [showCustomFloor, setShowCustomFloor] = useState(false);
   
@@ -23,23 +24,38 @@ const CreateShop = () => {
   
   const { currentUser } = useAuth();
   const navigate = useNavigate();
+  const { id } = useParams();
 
-  useEffect(() => { fetchCategoriesAndFloors(); fetchMerchantData(); }, []);
+  useEffect(() => { fetchMetadataAndShop(); }, [id]);
 
-  const fetchMerchantData = async () => {
-    try {
-      const docSnap = await getDoc(doc(db, 'users', currentUser.uid));
-      if (docSnap.exists()) setMerchantData(docSnap.data());
-    } catch (err) { console.error(err); }
-  };
-
-  const fetchCategoriesAndFloors = async () => {
+  const fetchMetadataAndShop = async () => {
     try {
       const catSnap = await getDocs(collection(db, 'categories'));
       setCategories(catSnap.docs.map(doc => doc.data().name));
       const flSnap = await getDocs(collection(db, 'floors'));
       setFloors(flSnap.docs.map(doc => doc.data().name));
-    } catch (err) { console.error(err); }
+
+      const shopDoc = await getDoc(doc(db, 'shops', id));
+      if (shopDoc.exists()) {
+        const data = shopDoc.data();
+        const isCustomCat = !predefinedCategories.includes(data.category) && !categories.includes(data.category);
+        const isCustomFloor = !predefinedFloors.includes(data.floor) && !floors.includes(data.floor);
+        
+        setFormData({
+          shopName: data.shopName,
+          category: isCustomCat ? 'Other' : data.category,
+          customCategory: isCustomCat ? data.category : '',
+          floor: isCustomFloor ? 'Other' : data.floor,
+          customFloor: isCustomFloor ? data.floor : '',
+          description: data.description || '',
+          contactNumber: data.contactNumber || ''
+        });
+        setCurrentImageURL(data.imageURL || '');
+        setShowCustomCategory(isCustomCat);
+        setShowCustomFloor(isCustomFloor);
+      } else setError('Storefront not found');
+      setPageLoading(false);
+    } catch (err) { setError('Failed to load store data'); setPageLoading(false); }
   };
 
   const handleChange = (e) => {
@@ -57,7 +73,7 @@ const CreateShop = () => {
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
-    if (file && validateImageFile(file)) setImageFile(file);
+    if (file && validateImageFile(file)) { setImageFile(file); setError(''); }
     else if(file) setError('Invalid image format (JPG/PNG < 5MB).');
   };
 
@@ -65,31 +81,32 @@ const CreateShop = () => {
     e.preventDefault();
     setError('');
     if (!validateRequired(formData.shopName)) return setError('Shop name is required');
-    if (!merchantData?.mallId) return setError('Assigned mall not found. Contact admin.');
 
     setLoading(true);
     try {
-      let imageURL = '';
+      let imageURL = currentImageURL;
       if (imageFile) imageURL = await uploadImageToCloudinary(imageFile);
 
       const finalCategory = formData.category === 'Other' ? formData.customCategory : formData.category;
       const finalFloor = formData.floor === 'Other' ? formData.customFloor : formData.floor;
 
-      const shopData = { ...formData, category: finalCategory, floor: finalFloor, imageURL, ownerId: currentUser.uid, mallId: merchantData.mallId, mallName: merchantData.mallName, createdAt: new Date().toISOString() };
+      const shopData = { ...formData, category: finalCategory, floor: finalFloor, imageURL, updatedAt: new Date().toISOString() };
       delete shopData.customCategory; delete shopData.customFloor;
 
-      const docRef = await addDoc(collection(db, 'shops'), shopData);
-      await logShop.create(currentUser.uid, formData.shopName, docRef.id);
+      await updateDoc(doc(db, 'shops', id), shopData);
+      await logShop.edit(currentUser.uid, formData.shopName, id);
       navigate('/merchant/shops');
-    } catch (err) { setError('Failed to initialize storefront.'); }
+    } catch (err) { setError('Failed to sync changes.'); }
     setLoading(false);
   };
+
+  if (pageLoading) return <div className="loading">Retrieving Storefront Profile...</div>;
 
   return (
     <div className="admin-page container section-padding">
       <div className="page-header text-center">
-        <h1 className="primary-gradient-text">Initialize Storefront</h1>
-        <p className="subtitle">Deploy a new retail environment in {merchantData?.mallName || 'your assigned mall'}</p>
+        <h1 className="primary-gradient-text">Sync Storefront Meta</h1>
+        <p className="subtitle">Modify the architectural profile of your retail environment</p>
       </div>
 
       <div className="form-card-wrapper">
@@ -100,13 +117,12 @@ const CreateShop = () => {
             <div className="form-grid">
               <div className="form-group full-width">
                 <label>Store Personality / Name *</label>
-                <input type="text" name="shopName" value={formData.shopName} onChange={handleChange} placeholder="e.g., Zudio Premium, Tech Haven" required />
+                <input type="text" name="shopName" value={formData.shopName} onChange={handleChange} required />
               </div>
 
               <div className="form-group">
                 <label>Market Segment *</label>
                 <select name="category" value={formData.category} onChange={handleChange} required>
-                  <option value="">Select Category</option>
                   {predefinedCategories.concat(categories).map((cat, i) => <option key={i} value={cat}>{cat}</option>)}
                   <option value="Other">Other (Custom)</option>
                 </select>
@@ -115,7 +131,6 @@ const CreateShop = () => {
               <div className="form-group">
                 <label>Vertical Floor Level *</label>
                 <select name="floor" value={formData.floor} onChange={handleChange} required>
-                  <option value="">Select Floor</option>
                   {predefinedFloors.concat(floors).map((fl, i) => <option key={i} value={fl}>{fl}</option>)}
                   <option value="Other">Other (Custom)</option>
                 </select>
@@ -137,24 +152,30 @@ const CreateShop = () => {
 
               <div className="form-group full-width">
                 <label>Storefront Narrative</label>
-                <textarea name="description" value={formData.description} onChange={handleChange} placeholder="Briefly describe the store's focus..." rows="4" />
+                <textarea name="description" value={formData.description} onChange={handleChange} rows="4" />
               </div>
 
               <div className="form-group">
                 <label>Protocol / Contact Number</label>
-                <input type="tel" name="contactNumber" value={formData.contactNumber} onChange={handleChange} placeholder="+1 (555) 000-0000" />
+                <input type="tel" name="contactNumber" value={formData.contactNumber} onChange={handleChange} />
               </div>
 
               <div className="form-group">
-                <label>Brand Identity Image</label>
+                <label>Visual Identity Preview</label>
+                {currentImageURL && (
+                  <div style={{width: '200px', height: '120px', borderRadius: '12px', overflow: 'hidden', border: '1px solid var(--glass-border)', marginBottom: '1.5rem'}}>
+                    <img src={currentImageURL} alt="Preview" style={{width: '100%', height: '100%', objectFit: 'cover'}} />
+                  </div>
+                )}
+                <label>Overwrite Image Asset</label>
                 <input type="file" accept="image/*" onChange={handleImageChange} className="file-input" />
-                <small className="input-hint">Visual asset for high-performance display.</small>
+                <small className="input-hint">Leave blank to retain current brand asset.</small>
               </div>
             </div>
 
             <div className="form-footer-actions">
               <button type="button" onClick={() => navigate('/merchant/shops')} className="btn btn-secondary">Cancel</button>
-              <button type="submit" disabled={loading} className="btn btn-primary btn-large">{loading ? 'Deploying...' : 'Initialize Store'}</button>
+              <button type="submit" disabled={loading} className="btn btn-primary btn-large">{loading ? 'Syncing...' : 'Save Revisions'}</button>
             </div>
           </form>
         </div>
@@ -163,4 +184,4 @@ const CreateShop = () => {
   );
 };
 
-export default CreateShop;
+export default EditShop;

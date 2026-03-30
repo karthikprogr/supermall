@@ -8,13 +8,7 @@ import { logAuth } from '../../utils/logger';
 import { validateEmail, validatePassword, validateRequired } from '../../utils/validation';
 
 const AdminCreateMerchant = () => {
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    password: '',
-    contactNumber: '',
-    mallId: ''
-  });
+  const [formData, setFormData] = useState({ name: '', email: '', password: '', contactNumber: '', mallId: '' });
   const [malls, setMalls] = useState([]);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -24,194 +18,91 @@ const AdminCreateMerchant = () => {
   const { currentUser } = useAuth();
   const navigate = useNavigate();
 
-  useEffect(() => {
-    fetchMalls();
-  }, []);
+  useEffect(() => { fetchMalls(); }, []);
 
   const fetchMalls = async () => {
     try {
       const mallsSnapshot = await getDocs(collection(db, 'malls'));
-      const mallsData = mallsSnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-      setMalls(mallsData);
-    } catch (error) {
-      console.error('Error fetching malls:', error);
-      setError('Failed to load malls');
-    }
+      setMalls(mallsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    } catch (err) { setError('Failed to load malls'); }
   };
 
-  const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
-  };
+  const handleChange = (e) => { setFormData({ ...formData, [e.target.name]: e.target.value }); };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    setSuccess('');
-
-    // Validation
-    if (!validateRequired(formData.name)) {
-      setError('Name is required');
-      return;
-    }
-
-    if (!validateEmail(formData.email)) {
-      setError('Please enter a valid email address');
-      return;
-    }
-
-    if (!validatePassword(formData.password)) {
-      setError('Password must be at least 6 characters');
-      return;
-    }
-
-    if (!validateRequired(formData.mallId)) {
-      setError('Please select a super mall');
-      return;
-    }
+    
+    if (!validateRequired(formData.name)) return setError('Name is required');
+    if (!validateEmail(formData.email)) return setError('Invalid email address');
+    if (!validatePassword(formData.password)) return setError('Password min 6 chars');
+    if (!validateRequired(formData.mallId)) return setError('Select a mall');
 
     setLoading(true);
-
     try {
-      // Get selected mall to check merchant limit
-      const mallDoc = await getDoc(doc(db, 'malls', formData.mallId));
-      if (!mallDoc.exists()) {
-        setError('Selected mall not found');
-        setLoading(false);
-        return;
-      }
-
-      const mallData = mallDoc.data();
-      const currentMerchants = mallData.currentMerchants || 0;
-      const maxMerchants = mallData.maxMerchants || 10;
-
-      if (currentMerchants >= maxMerchants) {
-        setError(`This mall has reached its maximum merchant limit (${maxMerchants})`);
-        setLoading(false);
-        return;
-      }
-
-      // Check if email already exists
-      const usersQuery = query(collection(db, 'users'), where('email', '==', formData.email));
-      const existingUsers = await getDocs(usersQuery);
+      const mallRef = doc(db, 'malls', formData.mallId);
+      const mallDoc = await getDoc(mallRef);
+      if (!mallDoc.exists()) throw new Error('Mall not found');
       
-      if (!existingUsers.empty) {
-        setError('Email already exists');
-        setLoading(false);
-        return;
+      const mallData = mallDoc.data();
+      if ((mallData.currentMerchants || 0) >= (mallData.maxMerchants || 10)) {
+        throw new Error('Mall capacity reached');
       }
 
-      // Create Firebase Auth account
-      const userCredential = await createUserWithEmailAndPassword(
-        auth,
-        formData.email,
-        formData.password
-      );
+      const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
       const user = userCredential.user;
 
-      // Create user document in Firestore with user.uid as document ID
       await setDoc(doc(db, 'users', user.uid), {
-        name: formData.name,
-        email: formData.email,
-        contactNumber: formData.contactNumber,
+        ...formData,
         role: 'merchant',
-        mallId: formData.mallId,
         mallName: mallData.mallName,
-        adminViewPassword: formData.password, // Store for admin viewing
+        adminViewPassword: formData.password,
         createdAt: new Date().toISOString(),
         createdBy: currentUser.uid
       });
 
-      // Increment merchant count in mall
-      await updateDoc(doc(db, 'malls', formData.mallId), {
-        currentMerchants: currentMerchants + 1
-      });
-
-      // Log merchant creation
+      await updateDoc(mallRef, { currentMerchants: (mallData.currentMerchants || 0) + 1 });
       await logAuth.register(user.uid, formData.email, 'merchant');
 
-      // Show success with credentials
-      setCreatedCredentials({
-        name: formData.name,
-        email: formData.email,
-        password: formData.password,
-        mallName: mallData.mallName
-      });
-      setSuccess('Merchant account created successfully!');
-      
-      // Reset form
-      setFormData({
-        name: '',
-        email: '',
-        password: '',
-        contactNumber: '',
-        mallId: ''
-      });
-    } catch (error) {
-      console.error('Error creating merchant:', error);
-      setError(error.message || 'Failed to create merchant account');
+      setCreatedCredentials({ ...formData, mallName: mallData.mallName });
+      setSuccess('Merchant onboarded successfully!');
+    } catch (err) {
+      const cleanError = err.message
+        .replace('Firebase: ', '')
+        .replace(/\(auth.*\)\./, '')
+        .replace('Error ', '');
+      setError(cleanError || 'Failed to provision merchant credentials.');
     }
-
     setLoading(false);
-  };
-
-  const handleCreateAnother = () => {
-    setCreatedCredentials(null);
-    setSuccess('');
   };
 
   if (createdCredentials) {
     return (
-      <div className="page-container">
-        <h1>Merchant Account Created!</h1>
-        
-        <div className="success-card">
-          <h2>✅ Merchant Account Created Successfully</h2>
-          
-          <div className="credentials-box">
-            <div className="credential-item">
-              <strong>Merchant Name:</strong>
-              <code>{createdCredentials.name}</code>
+      <div className="admin-page container section-padding">
+        <div className="page-header text-center">
+          <h1 className="primary-gradient-text">Onboarding Complete</h1>
+          <p className="subtitle">Merchant credentials generated successfully</p>
+        </div>
+        <div className="form-card-wrapper">
+          <div className="form-glass-card glass-card text-center">
+            <div className="credential-display-grid" style={{textAlign: 'left', marginBottom: '3rem'}}>
+              <div className="stat-card" style={{padding: '1.5rem', background: 'rgba(255,255,255,0.03)', marginBottom: '1rem'}}>
+                <p className="stat-label">Merchant Identity</p>
+                <h4 style={{fontSize: '1.5rem'}}>{createdCredentials.name}</h4>
+              </div>
+              <div className="stat-card" style={{padding: '1.5rem', background: 'rgba(255,255,255,0.03)', marginBottom: '1rem'}}>
+                <p className="stat-label">Access Email</p>
+                <code style={{fontSize: '1.1rem', color: 'var(--primary)'}}>{createdCredentials.email}</code>
+              </div>
+              <div className="stat-card" style={{padding: '1.5rem', background: 'rgba(255,255,255,0.03)', marginBottom: '1rem'}}>
+                <p className="stat-label">Vault Password</p>
+                <code style={{fontSize: '1.1rem', color: 'var(--accent)'}}>{createdCredentials.password}</code>
+              </div>
             </div>
-            <div className="credential-item">
-              <strong>Email:</strong>
-              <code>{createdCredentials.email}</code>
+            <div className="form-footer-actions" style={{justifyContent: 'center'}}>
+               <button onClick={() => navigate('/admin/merchants')} className="btn btn-secondary">Merchant List</button>
+               <button onClick={() => setCreatedCredentials(null)} className="btn btn-primary">Onboard Another</button>
             </div>
-            <div className="credential-item">
-              <strong>Password:</strong>
-              <code>{createdCredentials.password}</code>
-            </div>
-            <div className="credential-item">
-              <strong>Assigned Mall:</strong>
-              <code>{createdCredentials.mallName}</code>
-            </div>
-          </div>
-
-          <div className="info-box">
-            <p>⚠️ <strong>Important:</strong> Save these credentials! The merchant will use them to login.</p>
-            <p>📧 Send these credentials to the merchant securely.</p>
-            <p>🏢 Merchant can now create and manage shops in {createdCredentials.mallName}.</p>
-            <p>🔑 You can view the password anytime by editing the merchant details.</p>
-          </div>
-
-          <div className="form-actions">
-            <button 
-              onClick={handleCreateAnother}
-              className="btn btn-primary"
-            >
-              Create Another Merchant
-            </button>
-            <button 
-              onClick={() => navigate('/admin/merchants')}
-              className="btn btn-secondary"
-            >
-              View All Merchants
-            </button>
           </div>
         </div>
       </div>
@@ -219,108 +110,57 @@ const AdminCreateMerchant = () => {
   }
 
   return (
-    <div className="page-container">
-      <h1>Create Merchant Account</h1>
-      <p className="page-subtitle">Create a merchant (shop owner) account and assign to a super mall</p>
-      
-      {error && <div className="error-message">{error}</div>}
-      {success && <div className="success-message">{success}</div>}
-      
-      <form onSubmit={handleSubmit} className="form-container">
-        <div className="form-section">
-          <h2>Merchant Details</h2>
-          
-          <div className="form-group">
-            <label htmlFor="name">Merchant Name *</label>
-            <input
-              type="text"
-              id="name"
-              name="name"
-              value={formData.name}
-              onChange={handleChange}
-              placeholder="Enter merchant name"
-              required
-            />
-          </div>
+    <div className="admin-page container section-padding">
+      <div className="page-header text-center">
+        <h1 className="primary-gradient-text">Onboard Retail Partner</h1>
+        <p className="subtitle">Register a new merchant and assign infrastructure access</p>
+      </div>
 
-          <div className="form-group">
-            <label htmlFor="email">Email *</label>
-            <input
-              type="email"
-              id="email"
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              placeholder="merchant@example.com"
-              required
-            />
-            <small>Merchant will use this email to login</small>
-          </div>
+      <div className="form-card-wrapper">
+        <div className="form-glass-card glass-card">
+          <form onSubmit={handleSubmit} className="premium-form">
+            {error && <div className="error-message">{error}</div>}
+            
+            <div className="form-grid">
+              <div className="form-group full-width">
+                <label>Legal Name / Identity *</label>
+                <input type="text" name="name" value={formData.name} onChange={handleChange} placeholder="Full name or company identity" required />
+              </div>
 
-          <div className="form-group">
-            <label htmlFor="password">Password *</label>
-            <input
-              type="text"
-              id="password"
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              placeholder="Create password (min 6 characters)"
-              required
-            />
-            <small>You can view this password later when editing the merchant</small>
-          </div>
+              <div className="form-group">
+                <label>Login Email *</label>
+                <input type="email" name="email" value={formData.email} onChange={handleChange} placeholder="merchant@business.com" required />
+              </div>
 
-          <div className="form-group">
-            <label htmlFor="contactNumber">Contact Number</label>
-            <input
-              type="tel"
-              id="contactNumber"
-              name="contactNumber"
-              value={formData.contactNumber}
-              onChange={handleChange}
-              placeholder="Enter contact number"
-            />
-          </div>
+              <div className="form-group">
+                <label>Vault Password *</label>
+                <input type="text" name="password" value={formData.password} onChange={handleChange} placeholder="Strategic password (min 6 chars)" required />
+                <small className="input-hint">Security: Avoid simple patterns like '123456'.</small>
+              </div>
 
-          <div className="form-group">
-            <label htmlFor="mallId">Assign to Super Mall *</label>
-            <select
-              id="mallId"
-              name="mallId"
-              value={formData.mallId}
-              onChange={handleChange}
-              required
-            >
-              <option value="">Select a super mall</option>
-              {malls.map(mall => (
-                <option key={mall.id} value={mall.id}>
-                  {mall.mallName} - {mall.location} 
-                  ({mall.currentMerchants || 0}/{mall.maxMerchants || 10} merchants)
-                </option>
-              ))}
-            </select>
-            <small>Merchant will be able to create shops in this mall</small>
-          </div>
+              <div className="form-group">
+                <label>Contact Protocol</label>
+                <input type="tel" name="contactNumber" value={formData.contactNumber} onChange={handleChange} placeholder="+1 (555) 000-0000" />
+              </div>
+
+              <div className="form-group">
+                <label>Infrastructure Assignment *</label>
+                <select name="mallId" value={formData.mallId} onChange={handleChange} required>
+                  <option value="">Select Target Mall</option>
+                  {malls.map(mall => (
+                    <option key={mall.id} value={mall.id}>{mall.mallName} ({mall.currentMerchants || 0}/{mall.maxMerchants || 10})</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="form-footer-actions">
+              <button type="button" onClick={() => navigate('/admin/merchants')} className="btn btn-secondary">Cancel</button>
+              <button type="submit" disabled={loading} className="btn btn-primary btn-large">{loading ? 'Processing...' : 'Provision Account'}</button>
+            </div>
+          </form>
         </div>
-
-        <div className="form-actions">
-          <button 
-            type="submit" 
-            className="btn btn-primary"
-            disabled={loading}
-          >
-            {loading ? 'Creating...' : 'Create Merchant'}
-          </button>
-          <button 
-            type="button"
-            onClick={() => navigate('/admin/merchants')}
-            className="btn btn-secondary"
-          >
-            Cancel
-          </button>
-        </div>
-      </form>
+      </div>
     </div>
   );
 };

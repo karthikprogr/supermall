@@ -5,6 +5,14 @@ import { db } from '../../firebase';
 import { useUserContext } from '../../contexts/UserContext';
 import AsyncState from '../../components/AsyncState';
 
+const MALL_IMAGES = [
+  '/images/mall_1.png', // Premium Exterior
+  '/images/mall_2.png', // Premium Interior 
+  'https://images.unsplash.com/photo-1541339902099-13d44299127d?q=80&w=1000&auto=format&fit=crop',
+  'https://images.unsplash.com/photo-1567401893414-76b7b1e5a7a5?q=80&w=1000&auto=format&fit=crop'
+];
+
+
 const MallSelection = () => {
   const [malls, setMalls] = useState([]);
   const [filteredMalls, setFilteredMalls] = useState([]);
@@ -14,6 +22,21 @@ const MallSelection = () => {
   const [error, setError] = useState('');
   const { setSelectedMall } = useUserContext();
   const navigate = useNavigate();
+
+  // Helper to get consistent mall image
+  const getMallImage = (mall) => {
+    if (mall.imageURL) return mall.imageURL;
+    
+    const name = (mall.mallName || '').toLowerCase();
+    // Explicit mapping for demo malls to ensure they are DIFFERENT
+    if (name.includes('rithik')) return MALL_IMAGES[1]; // Premium Interior
+    if (name.includes('my mall')) return MALL_IMAGES[0]; // Premium Exterior
+    
+    // Fallback hash for other malls
+    const charCodeSum = (mall.mallName || '').split('').reduce((sum, char) => sum + char.charCodeAt(0), 0);
+    return MALL_IMAGES[charCodeSum % MALL_IMAGES.length];
+  };
+
 
   useEffect(() => {
     fetchMalls();
@@ -83,13 +106,15 @@ const MallSelection = () => {
   const remainingMalls = filteredMalls.slice(2);
 
   return (
-    <div className="page-container user-marketplace-page mall-selection-page">
-      <div className="page-header mall-selection-hero">
-        <span className="mall-selection-glow orb-left" aria-hidden="true" />
-        <span className="mall-selection-glow orb-right" aria-hidden="true" />
-        <span className="mall-selection-pill">User Dashboard</span>
-        <h1>Select a Super Mall</h1>
-        <p className="subtitle">Choose a mall to start exploring shops, products, and offers with smart discovery tools</p>
+    <div className="mall-selection-page">
+      <div className="mall-selection-hero">
+        <span className="orb-left" aria-hidden="true"></span>
+        <span className="orb-right" aria-hidden="true"></span>
+        <span className="mall-selection-pill">Super Mall Ecosystem</span>
+        <h1 className="primary-gradient-text">Select your destination</h1>
+        <p className="subtitle">Discover premium shops, exclusive offers, and smart shopping tools across our curated malls.</p>
+
+        
         <div className="mall-selection-hero-stats">
           <div className="hero-stat-chip">
             <strong>{totalMalls}</strong>
@@ -97,11 +122,11 @@ const MallSelection = () => {
           </div>
           <div className="hero-stat-chip">
             <strong>{uniqueCities}</strong>
-            <span>Locations</span>
+            <span>Cities</span>
           </div>
           <div className="hero-stat-chip">
-            <strong>{withImages}</strong>
-            <span>With Visuals</span>
+            <strong>{malls.length > 0 ? 'Live' : '...'}</strong>
+            <span>Status</span>
           </div>
         </div>
       </div>
@@ -115,32 +140,29 @@ const MallSelection = () => {
         />
       )}
 
-      {featuredMalls.length > 0 && (
+      {featuredMalls.length > 0 && !searchTerm && (
         <div className="featured-malls-section">
           <div className="section-heading-row">
             <h2>Featured Picks</h2>
             <span className="section-heading-meta">Top curated malls for quick exploration</span>
           </div>
           <div className="featured-malls-grid">
-            {featuredMalls.map((mall) => (
+            {featuredMalls.map((mall, idx) => (
               <div key={mall.id} className="featured-mall-card" onClick={() => handleMallSelect(mall)}>
+                <div className="featured-mall-image">
+                  <img src={getMallImage(mall)} alt={mall.mallName} />
+                </div>
                 <div className="featured-mall-content">
-                  <span className="featured-label">Trending</span>
+                  <span className="featured-label">{idx === 0 ? 'Trending' : 'Recommended'}</span>
                   <h3>{mall.mallName}</h3>
-                  <p>{mall.description || 'Explore popular shops, fresh offers, and trending collections.'}</p>
+                  <p>{mall.description || 'Explore popular shops, fresh offers, and trending collections in this premium destination.'}</p>
                   <div className="featured-location">
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{verticalAlign: 'middle', marginRight: '0.25rem'}}>
-                      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
-                      <circle cx="12" cy="10" r="3"/>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{marginRight: '0.25rem'}}>
+                      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
                     </svg>
-                    {mall.location || 'Location coming soon'}
+                    {mall.location || 'Location available'}
                   </div>
                 </div>
-                {mall.imageURL && (
-                  <div className="featured-mall-image">
-                    <img src={mall.imageURL} alt={mall.mallName} />
-                  </div>
-                )}
               </div>
             ))}
           </div>
@@ -150,97 +172,80 @@ const MallSelection = () => {
       <div className="mall-selection-toolbar">
         <div className="filters-container">
           <div className="filter-group">
-            <label>Search Super Malls</label>
+            <label>Live Mall Discovery</label>
             <input
               type="text"
-              placeholder="Search by mall name, location or keywords..."
+              placeholder="Search by name, location or floor keywords..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="filter-input"
             />
           </div>
-          <div className="filter-group mall-sort-group">
-            <label>Sort</label>
+          <div className="filter-group" style={{maxWidth: '200px'}}>
+            <label>Sort By</label>
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
               className="select-field"
             >
-              <option value="nameAsc">Mall Name: A to Z</option>
-              <option value="nameDesc">Mall Name: Z to A</option>
-              <option value="locationAsc">Location: A to Z</option>
+              <option value="nameAsc">A to Z</option>
+              <option value="nameDesc">Z to A</option>
+              <option value="locationAsc">Location</option>
             </select>
           </div>
-          {hasActiveSearch && (
-            <button
-              type="button"
-              className="btn btn-secondary"
-              onClick={() => setSearchTerm('')}
-            >
-              Clear Search
-            </button>
-          )}
-        </div>
-
-        <div className="mall-selection-summary">
-          <span className="summary-pill">Showing {filteredMalls.length} of {totalMalls}</span>
-          {searchTerm && <span className="summary-pill">Query: {searchTerm}</span>}
         </div>
       </div>
 
       {!error && filteredMalls.length === 0 ? (
         <div className="empty-state">
-          <p>{searchTerm ? 'No malls found matching your search' : 'No malls available at the moment'}</p>
+          <p>{searchTerm ? `No malls found matching "${searchTerm}"` : 'No malls available at the moment'}</p>
         </div>
       ) : (
         <>
-          {remainingMalls.length > 0 && (
-            <div className="section-heading-row secondary">
-              <h2>All Super Malls</h2>
-              <span className="section-heading-meta">Browse all available malls and pick your next visit</span>
-            </div>
-          )}
+          <div className="section-heading-row">
+            <h2>{searchTerm ? 'Search Results' : 'Explore All Malls'}</h2>
+            <p className="section-heading-meta">Showing {filteredMalls.length} destinations</p>
+          </div>
+          
           <div className="malls-grid">
-            {(remainingMalls.length > 0 ? remainingMalls : filteredMalls).map(mall => (
-            <div 
-              key={mall.id} 
-              className="mall-card"
-              onClick={() => handleMallSelect(mall)}
-            >
-              {mall.imageURL && (
+            {filteredMalls.map(mall => (
+              <div 
+                key={mall.id} 
+                className="mall-card"
+                onClick={() => handleMallSelect(mall)}
+              >
                 <div className="mall-image">
-                  <img src={mall.imageURL} alt={mall.mallName} />
+                  <img src={getMallImage(mall)} alt={mall.mallName} />
                 </div>
-              )}
-              <div className="mall-info">
-                <h3>{mall.mallName}</h3>
-                {mall.location && (
-                  <p className="mall-location">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{verticalAlign: 'middle', marginRight: '0.25rem'}}>
-                      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
-                      <circle cx="12" cy="10" r="3"/>
-                    </svg>
-                    {mall.location}
-                  </p>
-                )}
-                <p className="mall-description">{mall.description || 'Explore premium shops, products, and offers in this mall.'}</p>
-                <div className="mall-meta enhanced">
-                  <span className="mall-badge">Click to Explore</span>
-                  <span className="mall-meta-chip">Shops & Products</span>
-                  <span className="mall-meta-chip subtle">Smart Filters</span>
-                </div>
-                <div className="mall-card-cta">
-                  <button type="button" className="btn btn-primary btn-sm">
-                    Explore Now
-                  </button>
+                <div className="mall-info">
+                  <h3>{mall.mallName}</h3>
+                  {mall.location && (
+                    <p className="mall-location">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
+                      </svg>
+                      {mall.location}
+                    </p>
+                  )}
+                  <p className="mall-description">{mall.description || 'Explore premium shops and exclusive offers.'}</p>
+                  <div className="mall-meta enhanced">
+                    <span className="mall-badge">Fast Connect</span>
+                    <span className="mall-meta-chip">Multi-Floor</span>
+                  </div>
+                  <div className="mall-card-cta">
+                    <button type="button" className="btn btn-primary" style={{width: '100%'}}>
+                      Explore Destination
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            ))}
           </div>
+
         </>
       )}
     </div>
+
   );
 };
 
